@@ -99,7 +99,9 @@ a:active {
       transition: background 1s; }
 
 .mb-7 {
-  margin-bottom: 70px; }
+	margin-bottom: 70px;
+	font-weight: 100;
+}
   
 .centered {
 	text-align: center;

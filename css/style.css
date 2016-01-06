@@ -178,7 +178,7 @@ footer .social a i{
 }
 #menu .navbar-default .navbar-nav>.active>a, .navbar-default .navbar-nav>.active>a:hover, .navbar-default .navbar-nav>.active>a:focus {
     background: transparent;
-    color: #9B59B6;
+    color: #009688;
 }
 #menu .navbar-nav {
     margin: 7.5px -15px;
@@ -236,7 +236,7 @@ footer .social a i{
     height: 40px;
 }
 .to-top-btn:hover{
-    color: #9B59B6;
+    color: #009688;
 }
 .btn {
     border-radius: 0;
@@ -416,7 +416,7 @@ footer .social a i{
     -webkit-transition: all 0.3s ease;
     transition: all 0.3s ease;
     font-size: 50px;
-    color: #9B59B6;
+    color: #009688;
 }
 
 .service .heading {
@@ -427,7 +427,7 @@ footer .social a i{
 }
 
 .service:hover {
-    border-color: #9B59B6;
+    border-color: #009688;
 }
 
 .service:hover .icon-holder {
@@ -493,8 +493,8 @@ footer .social a i{
     line-height: 45px;
 }
 .portfolioFilter li.active {
-    background: #9b59b6 none repeat scroll 0 0;
-    border: 1px solid #9b59b6;
+    background: #009688 none repeat scroll 0 0;
+    border: 1px solid #009688;
     color: #fff;
 }
 .portfolio-item {
@@ -612,7 +612,7 @@ footer .social a i{
     width: 100px;
 }
 .client-photo.active{
-    border: 1px solid #9B59B6;
+    border: 1px solid #009688;
 }
 .client-photos img {
     opacity: 0.4;
@@ -994,7 +994,7 @@ footer .social a i{
     color: #85939b;
 }
 .sidebar .widget ul li a:hover {
-    color: #9B59B6;
+    color: #009688;
 }
 .sidebar .widget ul li {
     margin-bottom: 7px;
@@ -1476,8 +1476,8 @@ form .form-control:focus, form textarea:focus {
     border: 1px solid;
 }
 .btn:hover{
-    color: #9B59B6;
-    border-color: #9B59B6;
+    color: #009688;
+    border-color: #009688;
 }
 .blog-btn{
     height: auto;

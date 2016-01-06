@@ -294,18 +294,18 @@
                     <div class="col-sm-6 col-md-6">
                         <form id="contact-form" role="form">                            
                             <div class="form-group">
-                                <input type="text" class="form-control" id="c_name" placeholder="Name">
+                                <input type="text" class="form-control" id="email_name" placeholder="Name">
                             </div>
                             
                             <div class="form-group">
-                                <input type="email" class="form-control" id="c_email" placeholder="Email">                                
+                                <input type="email" class="form-control" id="email_text" placeholder="Email">                                
                             </div>
                             
                             <div class="form-group">
-                                <textarea class="form-control" id="c_message" rows="10" placeholder="Message"></textarea>
+                                <textarea class="form-control" id="email_message" rows="10" placeholder="Message"></textarea>
                             </div>
                             <br/>
-                            <button type="submit" class="btn">Send Message</button>
+                            <button type="submit" class="btn" onClick="sendMail()">Send Message</button>
                             <div class="ajax-response"></div>
                         </form>
                     </div>

@@ -89,9 +89,6 @@ jQuery(document).ready(function() {
     
 
     /* ---------------------------------------------- /*
-     * E-mail validation
-    /* ---------------------------------------------- */
-    /* ---------------------------------------------- /*
          * E-mail validation
         /* ---------------------------------------------- */
     function isValidEmailAddress(emailAddress) {
@@ -107,18 +104,18 @@ jQuery(document).ready(function() {
 
         e.preventDefault();
 
-        var c_name = jQuery('#c_name').val();
-        var c_email = jQuery('#c_email').val();
-        var c_message = jQuery('#c_message ').val();
+        var email_name = jQuery('#email_name').val();
+        var email_text = jQuery('#email_text').val();
+        var email_message = jQuery('#email_message ').val();
         var response = jQuery('#contact-form .ajax-response');
 
         var formData = {
-            'name': c_name,
-            'email': c_email,
-            'message': c_message
+            'name': email_name,
+            'email': email_text,
+            'message': email_message
         };
 
-        if ((c_name == '' || c_email == '' || c_message == '') || (!isValidEmailAddress(c_email))) {
+        if ((email_name == '' || email_text == '' || email_message == '') || (!isValidEmailAddress(email_text))) {
             response.fadeIn(500);
             response.html('<i class="fa fa-warning"></i> Please fix the errors and try again.');
         }
@@ -145,3 +142,11 @@ jQuery(document).ready(function() {
 
     
 });
+function sendMail() {
+    var name = document.getElementById("email_name").value;
+    var email = document.getElementById("email_text").value;
+    var message = document.getElementById("email_message").value + '\n' + '\n' + email + '\n' + name;
+
+    document.location.href = "mailto:cohsieh@berkeley.edu?subject="
+      + "&body=" + encodeURIComponent(message);
+}

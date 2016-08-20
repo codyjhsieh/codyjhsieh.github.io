@@ -20,6 +20,14 @@ License: Released under the MIT license - http://opensource.org/licenses/MIT
     font-family:'Open Sans', sans-serif;
     color: #85939b;
 }
+.mdl-layout {
+    align-items: center;
+  justify-content: center;
+}
+.mdl-layout__content {
+    padding: 24px;
+    flex: none;
+}
 h1, h2, h3, h4, h5, h6 {
     font-family:'Open Sans', sans-serif;
     color: #232a2f;

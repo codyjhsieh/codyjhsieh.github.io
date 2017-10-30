@@ -1,0 +1,35 @@
+{
+  "name": "codyjhsieh.github.io",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "gulp-install": "^1.1.0",
+    "gulp-pug": "^3.3.0",
+    "gulp-watch": "^4.3.11",
+    "pug": "^2.0.0-rc.4"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.18.13",
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.1",
+    "gulp-jshint": "^2.0.4",
+    "gulp-rename": "^1.2.2",
+    "gulp-sass": "^3.1.0",
+    "gulp-uglify": "^3.0.0",
+    "jshint": "^2.9.5"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codyjhsieh/codyjhsieh.github.io.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/codyjhsieh/codyjhsieh.github.io/issues"
+  },
+  "homepage": "https://github.com/codyjhsieh/codyjhsieh.github.io#readme"
+}

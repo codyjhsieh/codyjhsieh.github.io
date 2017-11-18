@@ -2,7 +2,7 @@ doctype html
 html(lang='en')
   head
     link(rel="stylesheet" href="/css/style.css") 
-    title Jade
+    title Cody Hsieh
     script(type='text/javascript').
       foo = true;
       bar = function () {};
@@ -11,13 +11,18 @@ html(lang='en')
       }
   body
     div(class='colorRectangle')
+    div(class='photoScroll')
+        img(class='portrait' src='/images/1.jpg')
+        img(class='landscape' src='/images/2.jpg')
+        img(class='portrait' src='/images/3.jpg')
+        img(class='portrait' src='/images/4.jpg')
+        img(class='landscape' src='/images/5.jpg')
     div(class='headBox')
       h1: a(href="index.html", title="Recent") cody hsieh
       p coder, photographer, musician
       div(class='nav')
         ul
-          li photos
-          li projects
-          li blog
-          li contact
-
+          li: a(href="index.html", title="Photos") photos
+          li: a(href="index.html", title="Projects") projects
+          li: a(href="index.html", title="Blog") blog
+          li: a(href="index.html", title="Contact")  contact

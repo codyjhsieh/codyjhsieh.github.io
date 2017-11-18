@@ -12,11 +12,17 @@ var syncOpt = {
   	};
 
 // Default Task
-gulp.task('default', ['pug', 'sass', 'watch']);
+gulp.task('default', ['copy', 'pug', 'sass', 'watch']);
+
+// Copy basic things like fonts
+gulp.task('copy', function () {
+    gulp.src('./source/assets/fonts/*.*')
+        .pipe(gulp.dest('./public/fonts/'));
+});
 
 // run this task by typing in gulp pug in CLI
 gulp.task('pug',function() {
- return gulp.src('source/views/*.pug')
+ return gulp.src('./source/views/*.pug')
  .pipe(pug({
     doctype: 'html',
     pretty: true
@@ -26,9 +32,9 @@ gulp.task('pug',function() {
 
  // Compile Our Sass
 gulp.task('sass', function() {
-    return gulp.src('source/sass/*.scss')
+    return gulp.src('./source/sass/*.scss')
         .pipe(sass())
-        .pipe(gulp.dest('public/css'))
+        .pipe(gulp.dest('./public/css'))
     	.pipe(browsersync.reload({ stream: true }));
 });
 
@@ -38,6 +44,7 @@ gulp.task('browsersync', function () {
 
 // Watches for file changes
 gulp.task('watch', ['browsersync'], function() {
-    gulp.watch('source/views/*.pug', ['pug', browsersync.reload]);
-    gulp.watch('source/sass/*.scss', ['sass', browsersync.reload]);
+    gulp.watch('./source/assets/fonts/*.*', ['copy', browsersync.reload]);
+    gulp.watch('./source/views/*.pug', ['pug', browsersync.reload]);
+    gulp.watch('./source/sass/*.scss', ['sass', browsersync.reload]);
 });

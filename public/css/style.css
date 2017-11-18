@@ -1,24 +1,60 @@
+body a {
+  color: black;
+  font-family: navFont; }
+
+body img {
+  position: relative;
+  margin: 40px 0; }
+
+body .portrait {
+  max-height: 800px; }
+
+body .landscape {
+  max-height: 500px; }
+
 body .headBox {
   position: fixed;
-  bottom: 10vh;
+  bottom: 20vh;
   left: 10vw;
   font-family: Karla, sans-serif;
   font-size: 15px;
   line-height: 21px;
   width: 20%;
   background: #fff;
+  min-width: 400px;
   max-height: 540px;
-  height: 70%;
+  height: 50%;
   padding: 20px 40px;
   -webkit-box-sizing: border-box;
-  box-sizing: border-box; }
+  box-sizing: border-box;
+  z-index: 1; }
 
 body .colorRectangle {
-  position: absolute;
+  position: fixed;
   bottom: 0px;
   left: 0px;
   width: 40%;
   height: 100%;
   background: #ffecb3;
   -webkit-box-sizing: border-box;
-  box-sizing: border-box; }
+  box-sizing: border-box;
+  z-index: -1; }
+
+body .photoScroll {
+  display: flex;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+  z-index: 0; }
+  body .photoScroll::-webkit-scrollbar {
+    display: none; }
+  body .photoScroll img {
+    left: 400px;
+    padding: 20px;
+    flex: 0 0 auto;
+    margin: auto; }
+
+@font-face {
+  body {
+    font-family: navFont;
+    src: url(/fonts/Avenir_Next.ttc); } }

@@ -1,10 +1,14 @@
 body a {
   color: black;
-  font-family: navFont; }
+  text-decoration: none; }
 
 body img {
   position: relative;
   margin: 40px 0; }
+
+body .logo {
+  font-size: 150%;
+  font-family: sans-serif; }
 
 body .portrait {
   max-height: 800px; }
@@ -16,7 +20,6 @@ body .headBox {
   position: fixed;
   bottom: 20vh;
   left: 10vw;
-  font-family: Karla, sans-serif;
   font-size: 15px;
   line-height: 21px;
   width: 20%;
@@ -27,7 +30,8 @@ body .headBox {
   padding: 20px 40px;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
-  z-index: 1; }
+  z-index: 1;
+  font-family: 'Poppins', sans-serif; }
 
 body .colorRectangle {
   position: fixed;
@@ -35,7 +39,7 @@ body .colorRectangle {
   left: 0px;
   width: 40%;
   height: 100%;
-  background: #ffecb3;
+  background: #95a3b3;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   z-index: -1; }
@@ -54,7 +58,13 @@ body .photoScroll {
     flex: 0 0 auto;
     margin: auto; }
 
-@font-face {
-  body {
-    font-family: navFont;
-    src: url(/fonts/Avenir_Next.ttc); } }
+body ul {
+  list-style-type: none;
+  -webkit-padding-start: 0px;
+  margin: 40px 0;
+  font-family: sans-serif; }
+  body ul li {
+    margin: 30px 0;
+    font-size: 150%; }
+    body ul li a {
+      font-family: 'Poppins', sans-serif; }

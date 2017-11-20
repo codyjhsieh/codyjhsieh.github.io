@@ -1,11 +1,15 @@
 body {
     a {
         color: black;
-        font-family: navFont
+        text-decoration: none;
     }
     img {
         position: relative;
         margin: 40px 0;
+    }
+    .logo {
+        font-size: 150%;
+        font-family: sans-serif;
     }
     .portrait {
         max-height: 800px;
@@ -17,7 +21,6 @@ body {
         position: fixed;
         bottom: 20vh;
         left: 10vw;
-        font-family: Karla, sans-serif;
         font-size: 15px;
         line-height: 21px;
         width: 20%;
@@ -29,6 +32,7 @@ body {
         -webkit-box-sizing: border-box;
         box-sizing: border-box;
         z-index: 1;
+        font-family: 'Poppins', sans-serif;
     }
     .colorRectangle {
         position: fixed;
@@ -36,7 +40,7 @@ body {
         left: 0px;
         width: 40%;
         height: 100%;
-        background: #ffecb3;
+        background: rgb(149, 163, 179);
         -webkit-box-sizing: border-box;
         box-sizing: border-box;
         z-index: -1;
@@ -57,8 +61,21 @@ body {
             margin: auto;
         }
     }    
-    @font-face {
-        font-family: navFont;
-        src: url(/fonts/Avenir_Next.ttc);
+    ul {
+        list-style-type: none;
+        -webkit-padding-start: 0px;
+        margin: 40px 0;
+        font-family: sans-serif;
+        li {
+            margin: 30px 0;
+            font-size: 150%;
+            a {
+                font-family: 'Poppins', sans-serif;
+            }
+        }
     }
+    // @font-face {
+    //     font-family: navFont;
+    //     src: url(/fonts/Avenir_Next.ttc);
+    // }
 }

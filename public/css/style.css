@@ -1,14 +1,30 @@
+body .selected {
+  font-weight: 400; }
+
 body a {
   color: black;
-  text-decoration: none; }
-
-body img {
-  position: relative;
-  margin: 40px 0; }
+  text-decoration: none;
+  font-weight: 100; }
 
 body .logo {
   font-size: 150%;
-  font-family: sans-serif; }
+  font-family: sans-serif;
+  font-weight: 900; }
+
+body .colorOne {
+  background: #95a3b3; }
+
+body .colorTwo {
+  background: #d3c5c2; }
+
+body .colorThree {
+  background: #f5ccb0; }
+
+body .colorFour {
+  background: #d8c6d6; }
+
+body .colorFive {
+  background: #d8c6d6; }
 
 body .portrait {
   max-height: 800px; }
@@ -31,32 +47,37 @@ body .headBox {
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   z-index: 1;
-  font-family: 'Poppins', sans-serif; }
+  font-family: 'Poppins', sans-serif;
+  box-shadow: 0px 70px 120px -30px rgba(0, 0, 0, 0.4), 0px 5px 15px rgba(0, 0, 0, 0.1); }
 
 body .colorRectangle {
+  transition: 0.8s all;
   position: fixed;
   bottom: 0px;
   left: 0px;
   width: 40%;
   height: 100%;
-  background: #95a3b3;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
-  z-index: -1; }
+  z-index: -1;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); }
 
 body .photoScroll {
+  padding: 20px;
   display: flex;
   flex-wrap: nowrap;
   -webkit-overflow-scrolling: touch;
   overflow-x: auto;
-  z-index: 0; }
+  z-index: 0;
+  margin: auto; }
   body .photoScroll::-webkit-scrollbar {
     display: none; }
   body .photoScroll img {
-    left: 400px;
-    padding: 20px;
+    position: relative;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    left: 25vw;
     flex: 0 0 auto;
-    margin: auto; }
+    margin: auto 20px; }
 
 body ul {
   list-style-type: none;

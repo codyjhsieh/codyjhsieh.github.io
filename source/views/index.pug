@@ -2,7 +2,7 @@ doctype html
 html(lang='en')
   head
     link(rel="stylesheet" href="/css/style.css") 
-    link(href="https://fonts.googleapis.com/css?family=Poppins:100" rel="stylesheet")
+    link(href="https://fonts.googleapis.com/css?family=Poppins:100,400,700,800" rel="stylesheet")
     title Cody Hsieh
     script(type='text/javascript').
       foo = true;
@@ -10,9 +10,11 @@ html(lang='en')
       if (foo) {
       bar(1 + 5)
       }
-    script(src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js")
+    script(src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js")
+    script(src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.6/angular.min.js")
+    script(src='/js/script.js')
   body
-    div(class='colorRectangle')
+    div(id='rectangle' class='colorRectangle colorOne')
     div(class='photoScroll')
         img(class='portrait' src='/images/1.jpg')
         img(class='landscape' src='/images/2.jpg')
@@ -20,11 +22,12 @@ html(lang='en')
         img(class='portrait' src='/images/4.jpg')
         img(class='landscape' src='/images/5.jpg')
     div(class='headBox')
+      line(x1="0" y1="0" x2="0" y2="200" style="stroke:rgb(255,0,0);stroke-width:2")
       h1: a(class='logo' href="index.html", title="Recent") cody hsieh
       p coder, photographer, musician
       div(class='nav')
         ul
-          li: a(href="index.html", title="Photos") photos
-          li: a(href="index.html", title="Projects") projects
-          li: a(href="index.html", title="Blog") blog
-          li: a(href="index.html", title="Contact")  contact
+          li: a(class="selected" href="index.html", title="Photos") photos
+          li: a(href="projects.html", title="Projects") projects
+          li: a(href="blog.html", title="Blog") blog
+          li: a(href="contact.html", title="Contact")  contact

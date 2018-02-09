@@ -2,27 +2,33 @@ doctype html
 html(lang='en')
   head
     link(rel="stylesheet" href="/css/style.css") 
-    link(href="https://fonts.googleapis.com/css?family=Poppins:100,400,700,800" rel="stylesheet") 
+    link(href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,600,700,900" rel="stylesheet")
+    link(href="https://fonts.googleapis.com/css?family=Poppins:100,200,400" rel="stylesheet")
+    link(href="https://fonts.googleapis.com/css?family=Anonymous+Pro" rel="stylesheet")
     title Cody Hsieh
-    script(type='text/javascript').
-      foo = true;
-      bar = function () {};
-      if (foo) {
-      bar(1 + 5)
-      }
-    script(src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js")
+    script(src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js")
     script(src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.6/angular.min.js")
+    script(src="https://raw.githubusercontent.com/cowboy/jquery-hashchange/v1.3/jquery.ba-hashchange.min.js")
+    script(src='/js/script.js')
   body
-    div(class='colorRectangle')
-    div(class='photoScroll')
+    div(id='rectangle' class='colorRectangle colorOne')
+    section(id='main-content')
+      div(id='photosList' class='exampleList photoScroll')
         img(class='portrait' src='/images/blog1.jpg')
     div(class='headBox')
-      line(x1="0" y1="0" x2="0" y2="200" style="stroke:rgb(255,0,0);stroke-width:2")
-      h1: a(class='logo' href="index.html", title="Recent") cody hsieh
-      p coder, photographer, musician
-      div(class='nav')
-        ul
-          li: a(href="index.html", title="Photos") photos
-          li: a(href="projects.html", title="Projects") projects
-          li: a(class="selected" href="blog.html", title="Blog") blog
-          li: a(href="contact.html", title="Contact")  contact
+      div(id='mainNav')
+        h1: a(class='logo' href="index.html", title="Recent") cody hsieh
+        p coder, photographer, musician
+        nav
+          ul
+            li: a(class="navLink" href="index.html" title="Photos") photos
+            li: a(class="navLink" href="projects.html" title="Projects") projects
+            li: a(class="navLink" href="blog.html" title="Blog") blog
+            li: a(class="navLink" href="contact.html" title="Contact")  contact 
+      div(id='bannerText')
+        div(id='date') 2017
+        div(id='designed') Designed by Cody Hsieh
+      svg(id='bannerLine' height='100%')
+        line(x1="0" y1="0" x2="0" y2="100%" style="stroke:#95989A; stroke-width:2 stroke-opacity:36") 
+      
+

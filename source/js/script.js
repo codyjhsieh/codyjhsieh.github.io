@@ -1,5 +1,36 @@
 // console.log('hi');
 $(document).ready(function(){
+
+   var newHash      = "",
+     $mainContent = $("#main-content"),
+     $el;
+
+   //Navigation Handler
+   $(".navLink").click(function(){
+      window.location.hash = $(this).attr("href");
+      return false;
+   });
+
+   $(window).bind('hashchange', function(){
+
+     newHash = window.location.hash.substring(1);
+     
+     if (newHash) {
+         $mainContent
+             .find(".exampleList")
+             .fadeOut(200, function() {
+                 $mainContent.hide().load(newHash + " .exampleList", function() {
+                     $mainContent.fadeIn(200);
+                     $("a.navLink").removeClass('selected')
+                     $("a.navLink[href='"+newHash+"']").addClass('selected')
+                 });
+             });
+     };
+     
+   });
+    
+   $(window).trigger('hashchange');
+
    //Color background scroll event
    $(".photoScroll").scroll(function(){
    if ($(this).scrollLeft() > 2000) {
@@ -26,26 +57,6 @@ $(document).ready(function(){
       $('#rectangle').removeClass('colorTwo')
    }
    });
-   //Navigation handler
-   $(".navLink").click(function(){
-      $("a.navLink").removeClass('selected')
-      $(this).addClass('selected')
 
-      //Example list handler
-      // $('.exampleList').addClass('shown')
-      // $('#' + $(this).text() + 'List').removeClass('shown')
-      console.log('#' + $(this).text() + 'List')
-      
-      $('.exampleList').fadeOut('fast', function(){
-         $('.exampleList').replace('#' + $(this).text() + 'List').fadeIn('fast');
-      });
-
-      if($(this).text() == 'projects') {
-         $('.headBox').addClass('softwareBox')
-      }
-      else {
-         $('.headBox').removeClass('softwareBox')
-      }
-   })
 
 });

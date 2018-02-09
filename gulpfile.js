@@ -22,6 +22,8 @@ gulp.task('default', ['copy', 'pug', 'sass', 'watch', 'resize', 'imagemin']);
 gulp.task('copy', function () {
     gulp.src('./source/js/*.js')
         .pipe(gulp.dest('./public/js/'));
+    gulp.src('./source/assets/images/*.svg')
+        .pipe(gulp.dest('./public/images/')); 
 });
 
 // run this task by typing in gulp pug in CLI
@@ -47,7 +49,7 @@ gulp.task('browsersync', function () {
 });
 
 gulp.task('resize', function () {
-  gulp.src('./source/assets/images/*.*')
+  gulp.src('./source/assets/images/*.jpg')
     .pipe(imageResize({
       percentage: 25
     }))
@@ -55,7 +57,7 @@ gulp.task('resize', function () {
 });
 
 gulp.task('imagemin', () =>
-    gulp.src('./public/images/*.*')
+    gulp.src('./public/images/*.jpg')
         .pipe(imagemin())
         .pipe(gulp.dest('./public/images/'))
 );
@@ -67,5 +69,4 @@ gulp.task('watch', ['browsersync'], function() {
     gulp.watch('./source/views/*.pug', ['pug', browsersync.reload]);
     gulp.watch('./source/sass/*.scss', ['sass', browsersync.reload]);
     gulp.watch('./source/assets/images/*.*', ['resize', browsersync.reload]);
-    gulp.watch('./public/images/*.*', ['imagemin', browsersync.reload]);
 });

@@ -2,34 +2,60 @@
 <html lang="en">
   <head>
     <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css?family=Poppins:100,400,700,800" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,600,700,900" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:100,200,400" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Anonymous+Pro" rel="stylesheet">
     <title>Cody Hsieh</title>
-    <script type="text/javascript">
-      foo = true;
-      bar = function () {};
-      if (foo) {
-      bar(1 + 5)
-      }
-    </script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.6/angular.min.js"></script>
+    <script src="https://raw.githubusercontent.com/cowboy/jquery-hashchange/v1.3/jquery.ba-hashchange.min.js"></script>
     <script src="/js/script.js"></script>
   </head>
   <body>
     <div class="colorRectangle colorOne" id="rectangle"></div>
-    <div class="photoScroll"><img class="portrait" src="/images/1.jpg"><img class="landscape" src="/images/2.jpg"><img class="portrait" src="/images/3.jpg"><img class="portrait" src="/images/4.jpg"><img class="landscape" src="/images/5.jpg"></div>
-    <div class="headBox">
-      <line x1="0" y1="0" x2="0" y2="200" style="stroke:rgb(255,0,0);stroke-width:2;"></line>
-      <h1><a class="logo" href="index.html" title="Recent">cody hsieh</a></h1>
-      <p>coder, photographer, musician</p>
-      <div class="nav">
-        <ul>
-          <li><a class="selected" href="index.html" title="Photos">photos</a></li>
-          <li><a href="projects.html" title="Projects">projects</a></li>
-          <li><a href="blog.html" title="Blog">blog</a></li>
-          <li><a href="contact.html" title="Contact"> contact</a></li>
-        </ul>
+    <div class="exampleList photoScroll" id="photosList"><img class="portrait" src="/images/1.jpg"><img class="landscape" src="/images/2.jpg"><img class="portrait" src="/images/3.jpg"><img class="landscape" src="/images/4.jpg"><img class="portrait" src="/images/5.jpg"><img class="landscape" src="/images/6.jpg"><img class="portrait" src="/images/7.jpg"><img class="portrait" src="/images/8.jpg"></div>
+    <div class="exampleList" id="projectsList">
+      <div class="project portrait"><img class="projImg softwareBox" src="/images/1.jpg">
+        <div class="projBanner projectBox softwareBox">
+          <h1>wingit</h1>
+        </div>
       </div>
+      <div class="project portrait"><img class="projImg softwareBox" src="/images/1.jpg">
+        <div class="projBanner projectBox softwareBox">
+          <h1>wingit</h1>
+        </div>
+      </div>
+      <div class="project portrait"><img class="projImg softwareBox" src="/images/1.jpg">
+        <div class="projBanner projectBox softwareBox">
+          <h1>wingit</h1>
+        </div>
+      </div>
+      <div class="project portrait"><img class="projImg softwareBox" src="/images/1.jpg">
+        <div class="projBanner projectBox softwareBox">
+          <h1>wingit</h1>
+        </div>
+      </div>
+    </div>
+    <div class="headBox">
+      <div id="mainNav">
+        <h1><a class="logo" href="index.html" title="Recent">cody hsieh</a></h1>
+        <p>coder, photographer, musician</p>
+        <div class="nav">
+          <ul>
+            <li><a class="selected navLink" href="index.html" title="Photos">photos</a></li>
+            <li><a class="navLink" href="projects.html" title="Projects">projects</a></li>
+            <li><a class="navLink" href="blog.html" title="Blog">blog</a></li>
+            <li><a class="navLink" href="contact.html" title="Contact"> contact </a></li>
+          </ul>
+        </div>
+      </div>
+      <div id="bannerText">
+        <div id="date">2017</div>
+        <div id="designed">Designed by Cody Hsieh</div>
+      </div>
+      <svg id="bannerLine" height="100%">
+        <line x1="0" y1="0" x2="0" y2="100%" style="stroke:#95989A; stroke-width:2 stroke-opacity:36;"> </line>
+      </svg>
     </div>
   </body>
 </html>

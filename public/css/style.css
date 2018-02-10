@@ -95,8 +95,6 @@ body {
   body .hidden {
     display: none;
     opacity: 0; }
-  body .exampleList {
-    transition: 0.5s all; }
   body .photoScroll {
     display: flex;
     flex-wrap: nowrap;

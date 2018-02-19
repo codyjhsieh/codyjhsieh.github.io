@@ -22,7 +22,7 @@ $(document).ready(function() {
             $("a.navLink[href='" + newHash + ".html']").addClass('selected')
 
             $mainContent.find(".exampleList").fadeOut(500, function() {
-                $mainContent.hide().load(newHash + ".html .exampleList", function() {
+                $mainContent.load(newHash + ".html .exampleList", function() {
                     $mainContent.find(".exampleList").scroll(function() {
                         console.log($(this).scrollLeft());
                         if ($(this).scrollLeft() > 2000) {
@@ -45,13 +45,9 @@ $(document).ready(function() {
                             $('#rectangle').removeClass('colorTwo')
                         }
                     });
-                    $mainContent.fadeIn(0, function() {
-                        $(".listItem").hide();
-                        $(".listItem").each(function(i) {
-                            $(this).delay((i + 1) * 250).fadeIn();
-                        });
-                        console.log($mainContent.find(".exampleList"));
-
+                    $(".listItem").hide();
+                    $(".listItem").each(function(i) {
+                        $(this).delay((i + 1) * 250).fadeIn();
                     });
                     if (newHash == "index") {
                         var classList = document.getElementById('rectangle').className.split(/\s+/);
@@ -62,7 +58,7 @@ $(document).ready(function() {
                         }
                         $('#rectangle').addClass('colorOne')
                     }
-                    if (newHash != "photos") {
+                    if (newHash != "index") {
                         const tilt = $('.headBox').tilt();
                         // Reset instance
                         tilt.tilt.reset.call(tilt);

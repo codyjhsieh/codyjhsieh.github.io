@@ -7,7 +7,7 @@ var gulp = require('gulp'),
     imageResize = require('gulp-image-resize');
 var syncOpt = {
 	    server: {
-	      baseDir: './public',
+	      baseDir: '.',
 	      index: 'index.html',
           projects: 'projects.html',
           blog: 'blog.html',
@@ -21,9 +21,9 @@ gulp.task('default', ['copy', 'pug', 'sass', 'watch', 'resize', 'imagemin']);
 // Copy basic things like fonts
 gulp.task('copy', function () {
     gulp.src('./source/js/*.js')
-        .pipe(gulp.dest('./public/js/'));
+        .pipe(gulp.dest('./js/'));
     gulp.src('./source/assets/images/*.svg')
-        .pipe(gulp.dest('./public/images/')); 
+        .pipe(gulp.dest('./images/')); 
 });
 
 // run this task by typing in gulp pug in CLI
@@ -33,14 +33,14 @@ gulp.task('pug',function() {
     doctype: 'html',
     pretty: true
  }))
- .pipe(gulp.dest('./public/'));
+ .pipe(gulp.dest('./'));
 });
 
  // Compile Our Sass
 gulp.task('sass', function() {
     return gulp.src('./source/sass/*.scss')
         .pipe(sass())
-        .pipe(gulp.dest('./public/css'))
+        .pipe(gulp.dest('./css'))
     	.pipe(browsersync.reload({ stream: true }));
 });
 
@@ -53,13 +53,13 @@ gulp.task('resize', function () {
     .pipe(imageResize({
       percentage: 40
     }))
-    .pipe(gulp.dest('./public/images/'));
+    .pipe(gulp.dest('./images/'));
 });
 
 gulp.task('imagemin', () =>
-    gulp.src('./public/images/*.jpg')
+    gulp.src('./images/*.jpg')
         .pipe(imagemin())
-        .pipe(gulp.dest('./public/images/'))
+        .pipe(gulp.dest('./images/'))
 );
 
 // Watches for file changes

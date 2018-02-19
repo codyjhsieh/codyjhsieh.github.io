@@ -7,7 +7,8 @@
     "gulp-install": "^1.1.0",
     "gulp-pug": "^3.3.0",
     "gulp-watch": "^4.3.11",
-    "pug": "^2.0.0-rc.4"
+    "pug": "^2.0.0-rc.4",
+    "tilt.js": "^1.2.1"
   },
   "devDependencies": {
     "browser-sync": "^2.18.13",

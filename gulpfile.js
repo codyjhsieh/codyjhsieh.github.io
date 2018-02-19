@@ -51,7 +51,7 @@ gulp.task('browsersync', function () {
 gulp.task('resize', function () {
   gulp.src('./source/assets/images/*.jpg')
     .pipe(imageResize({
-      percentage: 25
+      percentage: 40
     }))
     .pipe(gulp.dest('./public/images/'));
 });

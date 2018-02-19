@@ -11,6 +11,9 @@ body {
   body p {
     font-weight: 100;
     color: #95989A; }
+  body #aboutInfo p {
+    font-size: 1.25em;
+    line-height: 1.5em; }
   body a {
     color: black;
     text-decoration: none;
@@ -35,7 +38,7 @@ body {
   body .headBox {
     display: inline;
     position: fixed;
-    bottom: 15vh;
+    bottom: 18vh;
     left: 8vw;
     font-size: 15px;
     line-height: 21px;
@@ -48,12 +51,50 @@ body {
     -webkit-box-sizing: border-box;
     box-sizing: border-box;
     z-index: 1;
-    font-family: 'Source Sans Pro', sans-serif; }
-  body .softwareBox {
-    border-radius: 5px;
-    box-shadow: 0 10px 25px 0 rgba(50, 94, 128, 0.2); }
+    font-family: 'Source Sans Pro', sans-serif;
+    -webkit-transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+    transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1); }
   body #mainNav {
     float: left; }
+  body #contactForm {
+    display: inline;
+    position: fixed;
+    bottom: 10vh;
+    left: 25vw;
+    font-size: 15px;
+    line-height: 21px;
+    width: 70%;
+    background: #fff;
+    min-width: 300px;
+    height: 80%;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    z-index: 1;
+    font-family: 'Source Sans Pro', sans-serif;
+    -webkit-transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+    transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1); }
+  body #contactProf {
+    height: 100%;
+    left: 0vw;
+    margin: 0;
+    border-radius: 5px 0px 0px 5px;
+    float: left; }
+  body #aboutInfo {
+    padding: 20px;
+    overflow: hidden; }
+  body .softwareBox {
+    border-radius: 5px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    -webkit-transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+    transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1); }
+  body .softwareBoxAfter {
+    border-radius: 5px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    -webkit-transform: scale(1.02, 1.02);
+    transform: scale(1.02, 1.02);
+    -webkit-transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+    transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1); }
   body #bannerText {
     float: right;
     width: 35px;
@@ -107,56 +148,12 @@ body {
       display: none; }
     body .photoScroll img {
       position: relative;
-      left: 20vw;
+      left: 25vw;
       flex: 0 0 auto;
       margin: auto 20px; }
     @media (max-width: 700px) {
       body .photoScroll img {
         left: 40vw; } }
-  body #projectsList {
-    display: flex;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    overflow-x: auto;
-    z-index: 0;
-    height: 100vh;
-    top: 50%; }
-    body #projectsList::-webkit-scrollbar {
-      display: none; }
-    body #projectsList img {
-      position: relative;
-      left: 25vw;
-      top: 5vh;
-      flex: 0 0 auto;
-      margin: auto 20px;
-      box-shadow: 0 10px 25px 0 rgba(50, 94, 128, 0.2);
-      max-height: 100%; }
-    @media (max-width: 700px) {
-      body #projectsList img {
-        left: 40vw; } }
-    body #projectsList .project {
-      top: 10vh;
-      max-height: 90%;
-      max-width: 30%; }
-    body #projectsList .projectBox {
-      position: relative;
-      left: 25vw;
-      bottom: 10vh;
-      flex: 0 0 auto;
-      margin: auto;
-      font-size: 15px;
-      text-align: center;
-      line-height: 21px;
-      width: 20%;
-      padding: 5px;
-      background: #fff;
-      min-width: 300px;
-      max-height: 150px;
-      height: 20%;
-      -webkit-box-sizing: border-box;
-      box-sizing: border-box;
-      z-index: 1;
-      font-family: 'Source Sans Pro', sans-serif; }
   body ul {
     list-style-type: none;
     -webkit-padding-start: 0px;

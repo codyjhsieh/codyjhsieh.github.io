@@ -7,11 +7,6 @@ $(document).ready(function() {
         $mainContent = $("#main-content"),
         $el;
 
-
-    function colorHandler(scrollLeft) {
-
-    }
-
     //Navigation Handler
     $(".navLink").click(function() {
         window.location.hash = $(this).attr("href").slice(0, -5);
@@ -58,6 +53,41 @@ $(document).ready(function() {
                         console.log($mainContent.find(".exampleList"));
 
                     });
+                    if (newHash == "index") {
+                        var classList = document.getElementById('rectangle').className.split(/\s+/);
+                        for (var i = 0; i < classList.length; i++) {
+                            if (classList[i] != 'colorRectangle') {
+                                $('#rectangle').removeClass(classList[i]);
+                            }
+                        }
+                        $('#rectangle').addClass('colorOne')
+                    }
+                    if (newHash != "photos") {
+                        const tilt = $('.headBox').tilt();
+                        // Reset instance
+                        tilt.tilt.reset.call(tilt);
+
+                        $(".headBox").addClass('softwareBoxAfter')
+                        $(".colorRectangle").addClass('softwareBoxAfter')
+                        $(".listItem").addClass('softwareBoxAfter')
+
+                        var classList = document.getElementById('rectangle').className.split(/\s+/);
+                        for (var i = 0; i < classList.length; i++) {
+                            if (classList[i] != 'colorRectangle') {
+                                $('#rectangle').removeClass(classList[i]);
+                            }
+                        }
+                        $('#rectangle').addClass('colorFour')
+                    }
+                    else {
+                        const tilt = $('.headBox').tilt();
+                        // Destroy instance
+                        tilt.tilt.destroy.call(tilt);
+
+                        $(".headBox").removeClass('softwareBoxAfter')
+                        $(".colorRectangle").removeClass('softwareBoxAfter')
+                        $("listItem").removeClass('softwareBoxAfter')
+                    }
                 });
                 // $mainContent.hide();
             });

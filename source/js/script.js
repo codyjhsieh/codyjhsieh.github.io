@@ -23,6 +23,7 @@ $(document).ready(function() {
 
             $mainContent.find(".exampleList").fadeOut(500, function() {
                 $mainContent.load(newHash + ".html .exampleList", function() {
+                    $(".listItem").hide();
                     $mainContent.find(".exampleList").scroll(function() {
                         console.log($(this).scrollLeft());
                         if ($(this).scrollLeft() > 2000) {
@@ -45,7 +46,6 @@ $(document).ready(function() {
                             $('#rectangle').removeClass('colorTwo')
                         }
                     });
-                    $(".listItem").hide();
                     $(".listItem").each(function(i) {
                         $(this).delay((i + 1) * 250).fadeIn();
                     });

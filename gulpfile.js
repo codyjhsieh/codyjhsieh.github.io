@@ -23,7 +23,7 @@ gulp.task('copy', function () {
     gulp.src('./source/js/*.js')
         .pipe(gulp.dest('./js/'));
     gulp.src('./source/assets/images/*.svg')
-        .pipe(gulp.dest('./images/')); 
+        .pipe(gulp.dest('./assets/images/')); 
 });
 
 // run this task by typing in gulp pug in CLI
@@ -53,13 +53,13 @@ gulp.task('resize', function () {
     .pipe(imageResize({
       percentage: 40
     }))
-    .pipe(gulp.dest('./images/'));
+    .pipe(gulp.dest('./assets/images/'));
 });
 
 gulp.task('imagemin', () =>
-    gulp.src('./images/*.jpg')
+    gulp.src('./assets/images/*.jpg')
         .pipe(imagemin())
-        .pipe(gulp.dest('./images/'))
+        .pipe(gulp.dest('./assets/images/'))
 );
 
 // Watches for file changes

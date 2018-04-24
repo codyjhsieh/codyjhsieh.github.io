@@ -1,8 +1,6 @@
 // console.log('hi');
 $(document).ready(function() {
 
-    $(".listItem").hide();
-
     var newHash = "",
         $mainContent = $("#main-content"),
         $el;
@@ -23,7 +21,6 @@ $(document).ready(function() {
 
             $mainContent.find(".exampleList").fadeOut(500, function() {
                 $mainContent.load(newHash + ".html .exampleList", function() {
-                    $(".listItem").hide();
                     $mainContent.find(".exampleList").scroll(function() {
                         console.log($(this).scrollLeft());
                         if ($(this).scrollLeft() > 2000) {
@@ -46,9 +43,6 @@ $(document).ready(function() {
                             $('#rectangle').removeClass('colorTwo')
                         }
                     });
-                    $(".listItem").each(function(i) {
-                        $(this).delay((i + 1) * 250).fadeIn();
-                    });
                     if (newHash == "index") {
                         var classList = document.getElementById('rectangle').className.split(/\s+/);
                         for (var i = 0; i < classList.length; i++) {
@@ -59,9 +53,6 @@ $(document).ready(function() {
                         $('#rectangle').addClass('colorOne')
                     }
                     if (newHash != "index") {
-                        const tilt = $('.headBox').tilt();
-                        // Reset instance
-                        tilt.tilt.reset.call(tilt);
 
                         $(".headBox").addClass('softwareBoxAfter')
                         $(".colorRectangle").addClass('softwareBoxAfter')
@@ -76,16 +67,15 @@ $(document).ready(function() {
                         $('#rectangle').addClass('colorFour')
                     }
                     else {
-                        const tilt = $('.headBox').tilt();
-                        // Destroy instance
-                        tilt.tilt.destroy.call(tilt);
-
                         $(".headBox").removeClass('softwareBoxAfter')
                         $(".colorRectangle").removeClass('softwareBoxAfter')
                         $("listItem").removeClass('softwareBoxAfter')
                     }
+                    
+                    $(".listItem").each(function(i) {
+                        $(this).delay((i + 1) * 250).queue('fx', function() {$(this).addClass('nothidden');});
+                    });
                 });
-                // $mainContent.hide();
             });
             console.log(newHash + ".html .exampleList");
         };
@@ -120,6 +110,6 @@ $(document).ready(function() {
 });
 $(window).on('load', function() {
     $(".listItem").each(function(i) {
-        $(this).delay((i + 1) * 250).fadeIn();
+        $(this).delay((i + 1) * 250).queue('fx', function() {$(this).addClass('nothidden');});
     });
 });

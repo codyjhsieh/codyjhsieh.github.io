@@ -3,8 +3,10 @@ var gulp = require('gulp'),
 	pug = require('gulp-pug');
 	watch = require('gulp-watch');
 	browsersync = require('browser-sync');
-    imagemin = require('gulp-imagemin');
-    imageResize = require('gulp-image-resize');
+  imagemin = require('gulp-imagemin');
+  imageResize = require('gulp-image-resize');
+  autoprefixer = require('gulp-autoprefixer');
+
 var syncOpt = {
 	    server: {
 	      baseDir: '.',
@@ -16,7 +18,7 @@ var syncOpt = {
   	};
 
 // Default Task
-gulp.task('default', ['copy', 'pug', 'sass', 'watch', 'resize', 'imagemin']);
+gulp.task('default', ['copy', 'pug', 'sass', 'watch', 'resize', 'imagemin', 'autoprefix']);
 
 // Copy basic things like fonts
 gulp.task('copy', function () {
@@ -61,12 +63,20 @@ gulp.task('imagemin', () =>
         .pipe(imagemin())
         .pipe(gulp.dest('./assets/images/'))
 );
-
+ 
+gulp.task('autoprefix', () =>
+    gulp.src('css/style.css')
+        .pipe(autoprefixer({
+            browsers: ['last 2 versions'],
+            cascade: false
+        }))
+        .pipe(gulp.dest('css/'))
+);
 // Watches for file changes
 gulp.task('watch', ['browsersync'], function() {
     gulp.watch('./gulpfile.js', ['default', browsersync.reload]);
     gulp.watch('./source/js/*.js', ['copy', browsersync.reload]);
     gulp.watch('./source/views/*.pug', ['pug', browsersync.reload]);
-    gulp.watch('./source/sass/*.scss', ['sass', browsersync.reload]);
+    gulp.watch('./source/sass/*.scss', ['sass', 'autoprefix', browsersync.reload]);
     gulp.watch('./source/assets/images/*.*', ['resize', browsersync.reload]);
 });

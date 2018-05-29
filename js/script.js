@@ -73,7 +73,7 @@ $(document).ready(function() {
                     }
                     
                     $(".listItem").each(function(i) {
-                        $(this).delay((i + 1) * 250).queue('fx', function() {$(this).addClass('nothidden');});
+                        $(this).delay(250 + (i + 1) * 250).queue('fx', function() {$(this).addClass('nothidden');});
                     });
                 });
             });

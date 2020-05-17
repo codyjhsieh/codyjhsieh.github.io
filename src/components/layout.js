@@ -9,8 +9,34 @@ import React from "react"
 import PropTypes from "prop-types"
 import { useStaticQuery, graphql } from "gatsby"
 
-import Header from "./header"
-import "./layout.css"
+//styled components
+import {createGlobalStyle} from "styled-components"
+import { normalize } from "styled-normalize"
+
+// components
+import NavigationMenu from "./navigationMenu"
+import ColorBackground from "./colorBackground"
+
+const GlobalStyle = createGlobalStyle`
+  ${normalize}
+  
+  * {
+    text-decoration: none;
+    /* cusor: none; */
+  }
+
+  html {
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    font-size: 16px;
+  }
+
+  body {
+    background: #ffffff;
+    overscroll-behavior: none;
+    overflow-x: hidden;
+  }
+`
 
 const Layout = ({ children }) => {
   const data = useStaticQuery(graphql`
@@ -25,21 +51,12 @@ const Layout = ({ children }) => {
 
   return (
     <>
-      <Header siteTitle={data.site.siteMetadata.title} />
-      <div
-        style={{
-          margin: `0 auto`,
-          maxWidth: 960,
-          padding: `0 1.0875rem 1.45rem`,
-        }}
-      >
-        <main>{children}</main>
-        <footer>
-          © {new Date().getFullYear()}, Built with
-          {` `}
-          <a href="https://www.gatsbyjs.org">Gatsby</a>
-        </footer>
-      </div>
+      <GlobalStyle/>
+      <ColorBackground/>
+      <NavigationMenu/>
+      <main>
+        {children}
+      </main>
     </>
   )
 }

@@ -1,19 +1,18 @@
 import React from 'react'
+import Img from "gatsby-image"
+import { graphql } from "gatsby"
 
 import Layout from "../components/layout"
 import PhotoList from "../components/photoList"
 
-import Img from "gatsby-image"
-import img1 from "../assets/images/photos/1.jpg"
+import { 
+  PortraitContainer, 
+  LandscapeContainer 
+} from "../styles/photoListStyles"
 
-import { PortraitContainer, LandscapeContainer } from "../styles/photoListStyles"
-
-import { graphql } from "gatsby"
 
 const IndexPage = ({ data }) => (
     <Layout>
-
-        
         <PhotoList>
             <PortraitContainer>
               <Img 

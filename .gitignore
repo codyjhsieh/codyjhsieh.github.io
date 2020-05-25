@@ -3,4 +3,5 @@ node_modules/
 .DS_Store
 .cache/
 src/assets/images/photos/
+src/assets/images/projects/
 

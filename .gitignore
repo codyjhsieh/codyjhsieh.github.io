@@ -1,2 +1,7 @@
 _site/
+dist/
 node_modules/
+.cache/
+.DS_Store
+crate/pkg/
+crate/target/

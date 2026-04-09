@@ -22,6 +22,50 @@ const FIREWORK_DIRECTIONS = [
   [0, 3], [-2, 2], [-3, 0], [-2, -2],
 ];
 const SEEDED_WATER_RADIUS_SCALE = Math.sqrt(0.7);
+const BLACK_HOLE_RADIUS = 44;
+const BLACK_HOLE_CORE_RADIUS_SQ = 9;
+
+function buildBlackHoleOffsets() {
+  const core = [];
+  const pull = [];
+  const radiusSq = BLACK_HOLE_RADIUS * BLACK_HOLE_RADIUS;
+
+  for (let dy = -BLACK_HOLE_RADIUS; dy <= BLACK_HOLE_RADIUS; dy += 1) {
+    for (let dx = -BLACK_HOLE_RADIUS; dx <= BLACK_HOLE_RADIUS; dx += 1) {
+      if (dx === 0 && dy === 0) {
+        continue;
+      }
+
+      const distSq = dx * dx + dy * dy;
+      if (distSq > radiusSq) {
+        continue;
+      }
+
+      if (distSq <= BLACK_HOLE_CORE_RADIUS_SQ) {
+        core.push({ dx, dy, distSq });
+        continue;
+      }
+
+      const distanceBand = Math.max(1, Math.ceil(Math.sqrt(distSq)));
+      const normalized = distanceBand / BLACK_HOLE_RADIUS;
+      pull.push({
+        dx,
+        dy,
+        distanceBand,
+        cadence: Math.max(4, Math.floor(6 + normalized * normalized * 24)),
+        inwardX: dx === 0 ? 0 : -Math.sign(dx),
+        inwardY: dy === 0 ? 0 : -Math.sign(dy),
+        tangentX: dy === 0 ? 0 : Math.sign(dy),
+        tangentY: dx === 0 ? 0 : -Math.sign(dx),
+        inwardBias: normalized < 0.28 ? 4 : normalized < 0.62 ? 2 : 1,
+      });
+    }
+  }
+
+  return { core, pull };
+}
+
+const BLACK_HOLE_OFFSETS = buildBlackHoleOffsets();
 
 class SandSimulation {
   constructor(width, height) {
@@ -519,12 +563,12 @@ class SandSimulation {
   }
 
   paintCircle(cx, cy, radius, type) {
-    // Fireworks are always a single rocket at the center regardless of brush size
-    if (type === SPECIES.FIREWORK) {
+    // Fireworks and black holes are single anchors at the center regardless of brush size.
+    if (type === SPECIES.FIREWORK || type === SPECIES.BLACK_HOLE) {
       const x = cx | 0;
       const y = cy | 0;
       if (this.inBounds(x, y)) {
-        this.setCell(this.index(x, y), SPECIES.FIREWORK, this.seedDataFor(SPECIES.FIREWORK, x, y));
+        this.setCell(this.index(x, y), type, this.seedDataFor(type, x, y));
       }
       return;
     }
@@ -1166,92 +1210,83 @@ class SandSimulation {
   }
 
   updateBlackHole(index, x, y) {
-    const radius = 44;
-    const radiusSqMax = radius * radius;
-    const coreSq = 9;
     let consumed = 0;
     const phase = this.data[index] & 7;
 
-    for (let dy = -radius; dy <= radius; dy += 1) {
-      for (let dx = -radius; dx <= radius; dx += 1) {
-        if (dx === 0 && dy === 0) {
-          continue;
-        }
+    for (let i = 0; i < BLACK_HOLE_OFFSETS.core.length; i += 1) {
+      const offset = BLACK_HOLE_OFFSETS.core[i];
+      const nx = x + offset.dx;
+      const ny = y + offset.dy;
+      if (!this.inBounds(nx, ny)) {
+        continue;
+      }
 
-        const nx = x + dx;
-        const ny = y + dy;
-        if (!this.inBounds(nx, ny)) {
-          continue;
-        }
+      const targetIndex = this.index(nx, ny);
+      const target = this.types[targetIndex];
+      if (target === SPECIES.EMPTY || target === SPECIES.BLACK_HOLE) {
+        continue;
+      }
 
-        const distSq = dx * dx + dy * dy;
-        if (distSq > radiusSqMax) {
-          continue;
-        }
+      if (((this.frame + phase + nx * 7 + ny * 11 + offset.distSq) % 10) === 0) {
+        this.forceClearCell(targetIndex);
+        consumed += 1;
+      }
+    }
 
-        const targetIndex = this.index(nx, ny);
-        const target = this.types[targetIndex];
-        if (target === SPECIES.EMPTY || target === SPECIES.BLACK_HOLE) {
-          continue;
-        }
+    for (let i = 0; i < BLACK_HOLE_OFFSETS.pull.length; i += 1) {
+      const offset = BLACK_HOLE_OFFSETS.pull[i];
+      const nx = x + offset.dx;
+      const ny = y + offset.dy;
+      if (!this.inBounds(nx, ny)) {
+        continue;
+      }
 
-        if (distSq <= coreSq) {
-          if (((this.frame + phase + nx * 7 + ny * 11 + distSq) % 10) === 0) {
-            this.forceClearCell(targetIndex);
-            consumed += 1;
-          }
-          continue;
-        }
+      const targetIndex = this.index(nx, ny);
+      const target = this.types[targetIndex];
+      if (target === SPECIES.EMPTY || target === SPECIES.BLACK_HOLE) {
+        continue;
+      }
 
-        const distanceBand = Math.max(1, Math.ceil(Math.sqrt(distSq)));
-        const normalized = distanceBand / radius;
-        const cadence = Math.max(4, Math.floor(6 + normalized * normalized * 24));
-        if (((this.frame + phase + nx * 3 + ny * 5) % cadence) !== 0) {
-          continue;
-        }
+      if (((this.frame + phase + nx * 3 + ny * 5) % offset.cadence) !== 0) {
+        continue;
+      }
 
-        const inwardX = dx === 0 ? 0 : -Math.sign(dx);
-        const inwardY = dy === 0 ? 0 : -Math.sign(dy);
-        const tangentX = dy === 0 ? 0 : Math.sign(dy);
-        const tangentY = dx === 0 ? 0 : -Math.sign(dx);
-        const inwardBias = normalized < 0.28 ? 4 : normalized < 0.62 ? 2 : 1;
-        const swirlFirst = ((this.frame + phase + distanceBand) % (inwardBias + 1)) !== 0;
-        const candidates = swirlFirst
-          ? [
-              [nx + tangentX, ny + tangentY],
-              [nx + tangentX + inwardX, ny + tangentY + inwardY],
-              [nx + inwardX, ny + inwardY],
-            ]
-          : [
-              [nx + inwardX, ny + inwardY],
-              [nx + tangentX + inwardX, ny + tangentY + inwardY],
-              [nx + tangentX, ny + tangentY],
-            ];
+      const swirlFirst = ((this.frame + phase + offset.distanceBand) % (offset.inwardBias + 1)) !== 0;
+      const firstX = swirlFirst ? offset.tangentX : offset.inwardX;
+      const firstY = swirlFirst ? offset.tangentY : offset.inwardY;
+      const thirdX = swirlFirst ? offset.inwardX : offset.tangentX;
+      const thirdY = swirlFirst ? offset.inwardY : offset.tangentY;
 
-        for (let i = 0; i < candidates.length; i += 1) {
-          const destX = candidates[i][0];
-          const destY = candidates[i][1];
-          if (!this.inBounds(destX, destY)) {
-            continue;
-          }
-
-          const destIndex = this.index(destX, destY);
-          const occupant = this.types[destIndex];
-          if (occupant === SPECIES.EMPTY || occupant === SPECIES.WATER) {
-            if (occupant === SPECIES.WATER) {
-              this.forceClearCell(destIndex);
-            }
-            this.moveCell(targetIndex, destIndex);
-            consumed += 1;
-            break;
-          }
-        }
+      if (
+        this.tryMoveBlackHoleTarget(targetIndex, nx + firstX, ny + firstY) ||
+        this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX + offset.inwardX, ny + offset.tangentY + offset.inwardY) ||
+        this.tryMoveBlackHoleTarget(targetIndex, nx + thirdX, ny + thirdY)
+      ) {
+        consumed += 1;
       }
     }
 
     this.data[index] = 96 + ((phase + consumed + 1) & 31);
-    this.queueCellActivity(index, radius);
+    this.queueCellActivity(index, BLACK_HOLE_RADIUS);
     this.mark(index);
+  }
+
+  tryMoveBlackHoleTarget(targetIndex, destX, destY) {
+    if (!this.inBounds(destX, destY)) {
+      return false;
+    }
+
+    const destIndex = this.index(destX, destY);
+    const occupant = this.types[destIndex];
+    if (occupant !== SPECIES.EMPTY && occupant !== SPECIES.WATER) {
+      return false;
+    }
+
+    if (occupant === SPECIES.WATER) {
+      this.forceClearCell(destIndex);
+    }
+    this.moveCell(targetIndex, destIndex);
+    return true;
   }
 
   sampleMetrics() {

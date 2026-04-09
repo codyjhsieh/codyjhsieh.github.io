@@ -14,6 +14,15 @@
   --accent: #d8b27b;
   --accent-2: #8fa6b8;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+  --bg-glow-a: rgba(255, 252, 242, 0.82);
+  --bg-glow-b: rgba(184, 210, 222, 0.2);
+  --bg-top: #fffdf8;
+  --bg-mid: #f3f6f2;
+  --bg-low: #dfe9e8;
+  --frame-glow: rgba(255, 252, 241, 0.52);
+  --frame-top: #fffdf8;
+  --frame-mid: #f2f6f2;
+  --frame-low: #dce8e7;
 }
 
 * {
@@ -25,11 +34,12 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at 48% 0%, rgba(255, 252, 242, 0.82), transparent 40%),
-    radial-gradient(circle at 82% 18%, rgba(226, 232, 232, 0.18), transparent 30%),
-    linear-gradient(180deg, #fffdf8 0%, #faf4eb 40%, #f0e9dd 76%, #e8e2d8 100%);
+    radial-gradient(circle at 48% 0%, var(--bg-glow-a), transparent 40%),
+    radial-gradient(circle at 82% 18%, var(--bg-glow-b), transparent 30%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 48%, var(--bg-low) 100%);
   color: var(--ink);
   font-family: "AvenirNextLocal", "Trebuchet MS", sans-serif;
+  transition: background 900ms ease;
 }
 
 body {
@@ -228,8 +238,9 @@ button {
   border-radius: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 8%, rgba(255, 252, 241, 0.52), transparent 30%),
-    linear-gradient(180deg, #fffdf8 0%, #faf4eb 34%, #f2ece2 68%, #ebe5dc 100%);
+    radial-gradient(circle at 50% 8%, var(--frame-glow), transparent 30%),
+    linear-gradient(180deg, var(--frame-top) 0%, var(--frame-mid) 52%, var(--frame-low) 100%);
+  transition: background 900ms ease;
 }
 
 #sand-canvas {

@@ -20,12 +20,16 @@ function noise2d(x, y) {
   return value & 255;
 }
 
-function buildSky(width, height) {
+const DEFAULT_SKY_PALETTE = {
+  top: [255, 253, 248],
+  horizon: [243, 247, 242],
+  lower: [221, 233, 232],
+  sun: [255, 250, 236],
+};
+
+function buildSky(width, height, palette = DEFAULT_SKY_PALETTE) {
   const sky = new Uint32Array(width * height);
-  const top = [255, 253, 248];
-  const horizon = [250, 245, 235];
-  const lower = [244, 240, 232];
-  const sun = [255, 250, 236];
+  const { top, horizon, lower, sun } = palette;
   const sunX = width * 0.54;
   const sunY = height * 0.16;
   const sunRadius = Math.max(width, height) * 0.42;
@@ -163,15 +167,22 @@ class CanvasRenderer {
     this.canvas = canvas;
     this.simulation = simulation;
     this.ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+    this.skyPalette = DEFAULT_SKY_PALETTE;
     this.resize();
   }
 
   resize() {
     this.imageData = this.ctx.createImageData(this.simulation.width, this.simulation.height);
     this.output32 = new Uint32Array(this.imageData.data.buffer);
-    this.sky32 = buildSky(this.simulation.width, this.simulation.height);
+    this.sky32 = buildSky(this.simulation.width, this.simulation.height, this.skyPalette);
     this.canvas.width = this.simulation.width;
     this.canvas.height = this.simulation.height;
+  }
+
+  setSkyPalette(palette) {
+    this.skyPalette = palette;
+    this.sky32 = buildSky(this.simulation.width, this.simulation.height, this.skyPalette);
+    this.simulation.markDirtyAll();
   }
 
   render() {

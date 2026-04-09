@@ -4,6 +4,7 @@ import { applyPhotoStamp, applyResumeStamp, loadPhotoStamps } from "./photos";
 import { CanvasRenderer } from "./render";
 import { BRUSH_SIZES, createAppState } from "./state";
 import { SandSimulation, SPECIES } from "./simulation";
+import { applyTimeTheme, getCurrentTimeTheme } from "./timeTheme";
 import { drawHud, handleHudPointer } from "./ui";
 
 const CELL_SIZE = 4;
@@ -11,8 +12,6 @@ const MIN_WORLD_WIDTH = 120;
 const MIN_WORLD_HEIGHT = 120;
 const MAX_TICKS_PER_FRAME = 1;
 const MIN_TICKS_PER_FRAME = 1;
-const RESUME_STAMP_WIDTH = 40;
-const RESUME_STAMP_HEIGHT = 52;
 const PHOTO_DISPLAY_SLOTS = [
   { x: 0.12, y: 0.42 },
   { x: 0.32, y: 0.29 },
@@ -40,6 +39,9 @@ const tiltCancelButton = document.getElementById("tilt-cancel");
 const simulation = new SandSimulation(MIN_WORLD_WIDTH, MIN_WORLD_HEIGHT);
 const renderer = new CanvasRenderer({ canvas, simulation });
 const hudCtx = hudCanvas.getContext("2d");
+let activeTimeTheme = getCurrentTimeTheme();
+applyTimeTheme(activeTimeTheme);
+renderer.setSkyPalette(activeTimeTheme.sky);
 
 let drawing = false;
 let lastPoint = null;
@@ -57,8 +59,8 @@ let hudDirty = true;
 let lastHudSignature = "";
 let lastHudDrawTime = 0;
 let resumeCells = new Set();
+let resumeCellColors = new Map();
 let resumeHover = null; // { viewX, viewY } or null
-let resumeHitBounds = null;
 let appReady = false;
 let tiltListening = false;
 let tiltPermissionGranted = false;
@@ -70,6 +72,17 @@ let lastTiltDataAt = 0;
 let tiltSensorTimer = null;
 let toastMessage = "";
 let toastExpiresAt = 0;
+
+function updateTimeTheme() {
+  const nextTheme = getCurrentTimeTheme();
+  if (nextTheme.id === activeTimeTheme.id) {
+    return;
+  }
+  activeTimeTheme = nextTheme;
+  applyTimeTheme(activeTimeTheme);
+  renderer.setSkyPalette(activeTimeTheme.sky);
+  hudDirty = true;
+}
 
 function showToast(message, duration = TOAST_DURATION_MS) {
   toastMessage = message;
@@ -94,13 +107,10 @@ function placeResume(slot = PHOTO_DISPLAY_SLOTS.find((item) => item.resume)) {
   const cx = Math.floor(simulation.width * (slot?.x ?? 0.5));
   const cy = Math.floor(simulation.height * (slot?.y ?? 0.46));
   resumeCells = applyResumeStamp(simulation, cx, cy);
-  const hitPadding = Math.max(8, Math.round(Math.min(simulation.width, simulation.height) * 0.025));
-  resumeHitBounds = {
-    left: Math.max(0, cx - Math.floor(RESUME_STAMP_WIDTH / 2) - hitPadding),
-    right: Math.min(simulation.width - 1, cx + Math.ceil(RESUME_STAMP_WIDTH / 2) + hitPadding),
-    top: Math.max(0, cy - Math.floor(RESUME_STAMP_HEIGHT / 2) - hitPadding),
-    bottom: Math.min(simulation.height - 1, cy + Math.ceil(RESUME_STAMP_HEIGHT / 2) + hitPadding),
-  };
+  resumeCellColors = new Map();
+  for (const index of resumeCells) {
+    resumeCellColors.set(index, simulation.photoColors[index]);
+  }
 }
 
 function decorateSceneWithPhotos() {
@@ -388,14 +398,15 @@ function enablePhoneTilt({ fromPrompt = false } = {}) {
 }
 
 function isResumeHit(point) {
-  if (!resumeHitBounds) {
+  if (!resumeCells.size) {
     return false;
   }
+  const index = simulation.index(point.x, point.y);
+  const resumeColor = resumeCellColors.get(index);
   return (
-    point.x >= resumeHitBounds.left &&
-    point.x <= resumeHitBounds.right &&
-    point.y >= resumeHitBounds.top &&
-    point.y <= resumeHitBounds.bottom
+    resumeColor !== undefined &&
+    simulation.types[index] === SPECIES.PHOTO &&
+    simulation.photoColors[index] === resumeColor
   );
 }
 
@@ -630,6 +641,7 @@ function getTickBudget(fps) {
 }
 
 function frame(now) {
+  updateTimeTheme();
   const fps = sampleFps(now);
   const tickBudget = getTickBudget(fps);
   if (tickBudget > 0) {

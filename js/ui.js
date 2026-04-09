@@ -69,15 +69,14 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     const topLeftWidth = Math.floor((rowWidth - buttonGap) * 0.62);
     const topRightWidth = rowWidth - buttonGap - topLeftWidth;
     const tiltButtonWidth = buttonHeight;
-    const bottomWidth = Math.floor((rowWidth - tiltButtonWidth - buttonGap * 3) / 3);
+    const bottomWidth = Math.floor((rowWidth - tiltButtonWidth - buttonGap * 2) / 2);
     const bottomY = dock.y + 54;
     const photoY = dock.y + 98;
 
     addButton(dock.x + inset, dock.y + 10, topLeftWidth, buttonHeight, toolLabel, { type: "toggle-section", value: "tools" }, state.hudSection === "tools");
     addButton(dock.x + inset + topLeftWidth + buttonGap, dock.y + 10, topRightWidth, buttonHeight, state.paused ? "RESUME" : "PAUSE", { type: "pause" }, state.paused);
-    addButton(dock.x + inset, bottomY, bottomWidth, buttonHeight, "TOOLS", { type: "toggle-section", value: "tools" }, state.hudSection === "tools");
-    addButton(dock.x + inset + bottomWidth + buttonGap, bottomY, bottomWidth, buttonHeight, "WORLD", { type: "toggle-section", value: "world" }, state.hudSection === "world");
-    addButton(dock.x + inset + (bottomWidth + buttonGap) * 2, bottomY, bottomWidth, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
+    addButton(dock.x + inset, bottomY, bottomWidth, buttonHeight, "WORLD", { type: "toggle-section", value: "world" }, state.hudSection === "world");
+    addButton(dock.x + inset + bottomWidth + buttonGap, bottomY, bottomWidth, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
     addButton(
       dock.x + dock.width - inset - tiltButtonWidth,
       bottomY,

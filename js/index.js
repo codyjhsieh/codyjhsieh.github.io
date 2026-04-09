@@ -56,8 +56,8 @@ let resumeHover = null; // { viewX, viewY } or null
 let resumeHitBounds = null;
 let appReady = false;
 let tiltListening = false;
-let tiltPermissionRequested = false;
 let tiltPermissionGranted = false;
+let tiltPermissionPending = false;
 let tiltX = 0;
 let tiltY = 1;
 let lastMotionTiltAt = 0;
@@ -257,6 +257,14 @@ function stopTiltListeners() {
   window.removeEventListener("deviceorientation", handleDeviceOrientation);
 }
 
+async function requestSensorPermission(eventConstructor) {
+  const requestPermission = eventConstructor?.requestPermission;
+  if (typeof requestPermission !== "function") {
+    return "granted";
+  }
+  return requestPermission.call(eventConstructor);
+}
+
 function enablePhoneTilt() {
   if (!state.tiltAvailable) {
     return;
@@ -264,40 +272,32 @@ function enablePhoneTilt() {
   if (tiltListening) {
     return;
   }
-  if (tiltPermissionRequested) {
-    if (tiltPermissionGranted) {
-      startTiltListeners();
-    }
+  if (tiltPermissionPending) {
     return;
   }
-  tiltPermissionRequested = true;
-
-  const motion = window.DeviceMotionEvent;
-  const orientation = window.DeviceOrientationEvent;
-  const motionPermission = motion?.requestPermission;
-  const orientationPermission = orientation?.requestPermission;
-  if (typeof motionPermission === "function") {
-    motionPermission.call(motion)
-      .then((state) => {
-        if (state === "granted") {
-          tiltPermissionGranted = true;
-          startTiltListeners();
-        }
-      })
-      .catch(() => {});
-  } else if (typeof orientationPermission === "function") {
-    orientationPermission.call(orientation)
-      .then((state) => {
-        if (state === "granted") {
-          tiltPermissionGranted = true;
-          startTiltListeners();
-        }
-      })
-      .catch(() => {});
-  } else {
-    tiltPermissionGranted = true;
+  if (tiltPermissionGranted) {
     startTiltListeners();
+    return;
   }
+
+  tiltPermissionPending = true;
+  Promise.all([
+    requestSensorPermission(window.DeviceMotionEvent),
+    requestSensorPermission(window.DeviceOrientationEvent),
+  ])
+    .then((permissionStates) => {
+      if (permissionStates.every((permissionState) => permissionState === "granted")) {
+        tiltPermissionGranted = true;
+        startTiltListeners();
+      }
+    })
+    .catch(() => {})
+    .finally(() => {
+      tiltPermissionPending = false;
+      if (tiltPermissionGranted) {
+        startTiltListeners();
+      }
+    });
 }
 
 function isResumeHit(point) {

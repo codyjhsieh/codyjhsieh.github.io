@@ -32,6 +32,8 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     state.activeScene,
     state.paused ? 1 : 0,
     state.photoIndex,
+    state.tiltAvailable ? 1 : 0,
+    state.tiltEnabled ? 1 : 0,
     state.hudSection ?? "closed",
     photos[state.photoIndex]?.label ?? "loading",
   ].join("|");
@@ -175,15 +177,28 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
         );
       });
     } else {
-      panel.height = compact ? 146 : 110;
+      const showTilt = compact && state.tiltAvailable;
+      panel.height = compact ? (showTilt ? 188 : 146) : 110;
       panel.y = Math.max(8, panel.y - panel.height);
       panels.push(panel);
 
       const halfWidth = Math.floor((panel.width - inset * 2 - buttonGap) / 2);
       const actionY = panel.y + (compact ? 32 : 24);
-      const photoY = panel.y + (compact ? 82 : 56);
+      const tiltY = panel.y + 82;
+      const photoY = panel.y + (compact ? (showTilt ? 124 : 82) : 56);
       addButton(panel.x + inset, actionY, halfWidth, buttonHeight, "RESEED", { type: "reseed" });
       addButton(panel.x + inset + halfWidth + buttonGap, actionY, halfWidth, buttonHeight, "CLEAR", { type: "clear" });
+      if (showTilt) {
+        addButton(
+          panel.x + inset,
+          tiltY,
+          panel.width - inset * 2,
+          buttonHeight,
+          state.tiltEnabled ? "TILT ON" : "TILT OFF",
+          { type: "tilt-toggle" },
+          state.tiltEnabled,
+        );
+      }
       addButton(panel.x + inset, photoY, compact ? 62 : 54, buttonHeight, "PREV", { type: "photo-prev" });
       addButton(panel.x + panel.width - inset - (compact ? 62 : 54), photoY, compact ? 62 : 54, buttonHeight, "NEXT", { type: "photo-next" });
       const photoLabelWidth = Math.max(88, panel.width - inset * 2 - 124);
@@ -243,6 +258,7 @@ function handleHudPointer({ point, viewWidth, viewHeight, state, photos = [], ca
       case "clear": callbacks.onClear(); return true;
       case "photo-prev": callbacks.onPhotoPrev(); return true;
       case "photo-next": callbacks.onPhotoNext(); return true;
+      case "tilt-toggle": callbacks.onTiltToggle(); return true;
       default: return false;
     }
   }

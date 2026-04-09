@@ -24,6 +24,10 @@ const TILT_SMOOTHING = 0.18;
 const TILT_DEAD_ZONE = 0.055;
 
 const state = createAppState();
+state.tiltAvailable = Boolean(
+  navigator.maxTouchPoints > 0 &&
+  (window.DeviceMotionEvent || window.DeviceOrientationEvent),
+);
 const playfield = document.getElementById("playfield");
 const canvas = document.getElementById("sand-canvas");
 const hudCanvas = document.getElementById("hud-canvas");
@@ -53,6 +57,7 @@ let resumeHitBounds = null;
 let appReady = false;
 let tiltListening = false;
 let tiltPermissionRequested = false;
+let tiltPermissionGranted = false;
 let tiltX = 0;
 let tiltY = 1;
 let lastMotionTiltAt = 0;
@@ -232,13 +237,37 @@ function startTiltListeners() {
     return;
   }
   tiltListening = true;
+  state.tiltEnabled = true;
+  hudDirty = true;
   window.addEventListener("devicemotion", handleDeviceMotion, { passive: true });
   window.addEventListener("deviceorientation", handleDeviceOrientation, { passive: true });
 }
 
+function stopTiltListeners() {
+  if (!tiltListening) {
+    return;
+  }
+  tiltListening = false;
+  state.tiltEnabled = false;
+  tiltX = 0;
+  tiltY = 1;
+  simulation.setGravity(0, 1);
+  hudDirty = true;
+  window.removeEventListener("devicemotion", handleDeviceMotion);
+  window.removeEventListener("deviceorientation", handleDeviceOrientation);
+}
+
 function enablePhoneTilt() {
+  if (!state.tiltAvailable) {
+    return;
+  }
+  if (tiltListening) {
+    return;
+  }
   if (tiltPermissionRequested) {
-    startTiltListeners();
+    if (tiltPermissionGranted) {
+      startTiltListeners();
+    }
     return;
   }
   tiltPermissionRequested = true;
@@ -251,6 +280,7 @@ function enablePhoneTilt() {
     motionPermission.call(motion)
       .then((state) => {
         if (state === "granted") {
+          tiltPermissionGranted = true;
           startTiltListeners();
         }
       })
@@ -259,11 +289,13 @@ function enablePhoneTilt() {
     orientationPermission.call(orientation)
       .then((state) => {
         if (state === "granted") {
+          tiltPermissionGranted = true;
           startTiltListeners();
         }
       })
       .catch(() => {});
   } else {
+    tiltPermissionGranted = true;
     startTiltListeners();
   }
 }
@@ -290,9 +322,6 @@ function openResume() {
 function handlePointerDown(event) {
   if (!appReady) {
     return;
-  }
-  if (event.pointerType !== "mouse") {
-    enablePhoneTilt();
   }
 
   const rect = hudCanvas.getBoundingClientRect();
@@ -328,6 +357,14 @@ function handlePointerDown(event) {
       },
       onPauseToggle: () => {
         state.paused = !state.paused;
+        hudDirty = true;
+      },
+      onTiltToggle: () => {
+        if (state.tiltEnabled) {
+          stopTiltListeners();
+        } else {
+          enablePhoneTilt();
+        }
         hudDirty = true;
       },
       onClear: () => {

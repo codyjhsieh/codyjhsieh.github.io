@@ -30,6 +30,8 @@ function createAppState() {
     activeScene: "dunes",
     photoIndex: 0,
     hudSection: null,
+    tiltAvailable: false,
+    tiltEnabled: false,
   };
 }
 

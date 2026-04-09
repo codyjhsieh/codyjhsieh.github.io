@@ -21,6 +21,8 @@ const PHOTO_SOURCES = [
   "/assets/images/DSC00359.jpg",
 ];
 
+const PHOTO_LOAD_TIMEOUT_MS = 2400;
+
 function labelFromSource(src) {
   return src.split("/").pop().replace(/\.[^.]+$/, "");
 }
@@ -66,24 +68,53 @@ function createPhotoStamp(image) {
   return { size, pixels };
 }
 
-async function loadPhotoStamps() {
+function loadPhotoStamp(src, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      image.onload = null;
+      image.onerror = null;
+      reject(new Error(`Timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    function settle(callback, value) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      window.clearTimeout(timeoutId);
+      callback(value);
+    }
+
+    image.decoding = "async";
+    image.fetchPriority = "high";
+    image.loading = "eager";
+    image.onload = () => {
+      try {
+        settle(resolve, {
+          src,
+          label: labelFromSource(src),
+          stamp: createPhotoStamp(image),
+        });
+      } catch (error) {
+        settle(reject, error);
+      }
+    };
+    image.onerror = () => {
+      settle(reject, new Error(`Failed to load ${src}`));
+    };
+    image.src = src;
+  });
+}
+
+async function loadPhotoStamps({ timeoutMs = PHOTO_LOAD_TIMEOUT_MS } = {}) {
   const results = await Promise.allSettled(
-    PHOTO_SOURCES.map(
-      (src) =>
-        new Promise((resolve, reject) => {
-          const image = new Image();
-          image.decoding = "async";
-          image.onload = () => {
-            resolve({
-              src,
-              label: labelFromSource(src),
-              stamp: createPhotoStamp(image),
-            });
-          };
-          image.onerror = reject;
-          image.src = src;
-        }),
-    ),
+    PHOTO_SOURCES.map((src) => loadPhotoStamp(src, timeoutMs)),
   );
 
   const stamps = [];

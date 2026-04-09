@@ -22,6 +22,8 @@ const PHOTO_DISPLAY_SLOTS = [
 ];
 const TILT_SMOOTHING = 0.18;
 const TILT_DEAD_ZONE = 0.055;
+const TILT_SENSOR_TIMEOUT_MS = 1800;
+const TOAST_DURATION_MS = 3200;
 
 const state = createAppState();
 state.tiltAvailable = Boolean(
@@ -61,6 +63,29 @@ let tiltPermissionPending = false;
 let tiltX = 0;
 let tiltY = 1;
 let lastMotionTiltAt = 0;
+let lastTiltDataAt = 0;
+let tiltSensorTimer = null;
+let toastMessage = "";
+let toastExpiresAt = 0;
+
+function showToast(message, duration = TOAST_DURATION_MS) {
+  toastMessage = message;
+  toastExpiresAt = performance.now() + duration;
+  hudDirty = true;
+}
+
+function getActiveToast(now) {
+  if (!toastMessage) {
+    return null;
+  }
+  if (now >= toastExpiresAt) {
+    toastMessage = "";
+    toastExpiresAt = 0;
+    hudDirty = true;
+    return null;
+  }
+  return { message: toastMessage };
+}
 
 function placeResume(slot = PHOTO_DISPLAY_SLOTS.find((item) => item.resume)) {
   const cx = Math.floor(simulation.width * (slot?.x ?? 0.5));
@@ -219,6 +244,7 @@ function handleDeviceMotion(event) {
     return;
   }
   lastMotionTiltAt = performance.now();
+  lastTiltDataAt = lastMotionTiltAt;
   applyTiltGravity(gravity.x / 9.80665, -gravity.y / 9.80665);
 }
 
@@ -229,7 +255,16 @@ function handleDeviceOrientation(event) {
   if (typeof event.gamma !== "number" || typeof event.beta !== "number") {
     return;
   }
+  lastTiltDataAt = performance.now();
   applyTiltGravity(Math.sin(event.gamma * Math.PI / 180), Math.sin(event.beta * Math.PI / 180));
+}
+
+function clearTiltSensorTimer() {
+  if (!tiltSensorTimer) {
+    return;
+  }
+  window.clearTimeout(tiltSensorTimer);
+  tiltSensorTimer = null;
 }
 
 function startTiltListeners() {
@@ -238,6 +273,15 @@ function startTiltListeners() {
   }
   tiltListening = true;
   state.tiltEnabled = true;
+  lastTiltDataAt = 0;
+  clearTiltSensorTimer();
+  tiltSensorTimer = window.setTimeout(() => {
+    tiltSensorTimer = null;
+    if (tiltListening && !lastTiltDataAt) {
+      stopTiltListeners();
+      showToast("Tilt is on, but no sensor data is coming through.");
+    }
+  }, TILT_SENSOR_TIMEOUT_MS);
   hudDirty = true;
   window.addEventListener("devicemotion", handleDeviceMotion, { passive: true });
   window.addEventListener("deviceorientation", handleDeviceOrientation, { passive: true });
@@ -249,6 +293,7 @@ function stopTiltListeners() {
   }
   tiltListening = false;
   state.tiltEnabled = false;
+  clearTiltSensorTimer();
   tiltX = 0;
   tiltY = 1;
   simulation.setGravity(0, 1);
@@ -267,12 +312,14 @@ async function requestSensorPermission(eventConstructor) {
 
 function enablePhoneTilt() {
   if (!state.tiltAvailable) {
+    showToast("Tilt is not available in this browser.");
     return;
   }
   if (tiltListening) {
     return;
   }
   if (tiltPermissionPending) {
+    showToast("Tilt permission request is still open.");
     return;
   }
   if (tiltPermissionGranted) {
@@ -289,9 +336,13 @@ function enablePhoneTilt() {
       if (permissionStates.every((permissionState) => permissionState === "granted")) {
         tiltPermissionGranted = true;
         startTiltListeners();
+      } else {
+        showToast("Tilt permission was not granted.");
       }
     })
-    .catch(() => {})
+    .catch(() => {
+      showToast("Tilt permission could not be requested.");
+    })
     .finally(() => {
       tiltPermissionPending = false;
       if (tiltPermissionGranted) {
@@ -482,6 +533,7 @@ function sampleFps(now) {
 
 function updateHud(now, fps) {
   const selectedPhoto = photoStamps[state.photoIndex]?.label ?? "loading";
+  const toast = getActiveToast(now);
   const statsKey = [
     Math.round(fps / 4),
     Math.round(metrics.particles / 24),
@@ -497,6 +549,7 @@ function updateHud(now, fps) {
     state.photoIndex,
     state.hudSection ?? "closed",
     selectedPhoto,
+    toast?.message ?? "",
   ].join("|");
 
   if (!hudDirty && signature === lastHudSignature && now - lastHudDrawTime < 50) {
@@ -520,6 +573,7 @@ function updateHud(now, fps) {
     },
     pixelRatio: hudPixelRatio,
     resumeHover,
+    toast,
   });
 }
 

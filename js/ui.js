@@ -177,8 +177,8 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
         );
       });
     } else {
-      const showTilt = compact && state.tiltAvailable;
-      panel.height = compact ? (showTilt ? 188 : 146) : 110;
+      const showTilt = compact;
+      panel.height = compact ? 188 : 110;
       panel.y = Math.max(8, panel.y - panel.height);
       panels.push(panel);
 
@@ -194,7 +194,7 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
           tiltY,
           panel.width - inset * 2,
           buttonHeight,
-          state.tiltEnabled ? "TILT ON" : "TILT OFF",
+          state.tiltAvailable ? (state.tiltEnabled ? "TILT ON" : "TILT OFF") : "TILT N/A",
           { type: "tilt-toggle" },
           state.tiltEnabled,
         );
@@ -276,7 +276,7 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelRatio = 1, resumeHover = null }) {
+function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelRatio = 1, resumeHover = null, toast = null }) {
   const layout = getHudLayoutForViewport(viewWidth, viewHeight, state, photos);
   const compact = layout.compact;
   const dock = layout.dock;
@@ -433,6 +433,38 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
     ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(230, 238, 246, 0.9)";
     ctx.fillText(tipText, tipX + tipW / 2, tipY + tipH / 2);
+    ctx.textAlign = "left";
+  }
+
+  if (toast) {
+    const toastText = toast.message ?? "";
+    ctx.font = compact ? "12px monospace" : "11px monospace";
+    const maxToastW = Math.min(viewWidth - 24, compact ? 330 : 380);
+    const toastLabel = truncateLabel(toastText, Math.max(12, Math.floor((maxToastW - 24) / 7)));
+    const toastW = Math.min(maxToastW, ctx.measureText(toastLabel).width + 24);
+    const toastH = compact ? 34 : 30;
+    const toastX = Math.round((viewWidth - toastW) / 2);
+    const toastY = Math.max(10, compact ? 12 : 18);
+    const toastR = 8;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.42)";
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 6;
+    roundRect(ctx, toastX, toastY, toastW, toastH, toastR);
+    ctx.fillStyle = "rgba(22, 14, 14, 0.88)";
+    ctx.fill();
+    ctx.restore();
+
+    roundRect(ctx, toastX + 0.5, toastY + 0.5, toastW - 1, toastH - 1, toastR);
+    ctx.strokeStyle = "rgba(255, 146, 126, 0.58)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255, 236, 230, 0.94)";
+    ctx.fillText(toastLabel, toastX + toastW / 2, toastY + toastH / 2);
     ctx.textAlign = "left";
   }
 

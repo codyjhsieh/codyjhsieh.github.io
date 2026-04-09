@@ -45,7 +45,7 @@ let appReady = false;
 
 function placeResume() {
   const cx = Math.floor(simulation.width / 2);
-  const cy = Math.floor(simulation.height * 0.28);
+  const cy = Math.floor(simulation.height * 0.46);
   resumeCells = applyResumeStamp(simulation, cx, cy);
   const hitPadding = Math.max(8, Math.round(Math.min(simulation.width, simulation.height) * 0.025));
   resumeHitBounds = {

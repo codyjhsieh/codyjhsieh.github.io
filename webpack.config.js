@@ -10,8 +10,8 @@ module.exports = (_, argv) => {
     entry: "./js/bootstrap.js",
     output: {
       path: path.resolve(__dirname, "dist"),
-      filename: "main.[contenthash:8].js",
-      chunkFilename: "[name].[contenthash:8].js",
+      filename: "main.js",
+      chunkFilename: "[name].js",
       publicPath: "/",
     },
     devServer: {
@@ -26,7 +26,7 @@ module.exports = (_, argv) => {
       new CopyWebpackPlugin({
         patterns: [{ from: "assets", to: "assets" }, { from: "CNAME", noErrorOnMissing: true }],
       }),
-      new HtmlWebpackPlugin({ template: "index.html", inject: "body", scriptLoading: "defer" }),
+      new HtmlWebpackPlugin({ template: "index.html", inject: false }),
     ],
     module: {
       rules: [

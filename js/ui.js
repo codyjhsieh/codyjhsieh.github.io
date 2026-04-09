@@ -58,8 +58,8 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
   const panels = [];
   const buttons = [];
 
-  function addButton(x, y, width, height, label, action, selected = false, readOnly = false) {
-    buttons.push({ x, y, width, height, label, action, selected, readOnly });
+  function addButton(x, y, width, height, label, action, selected = false, readOnly = false, icon = null) {
+    buttons.push({ x, y, width, height, label, action, selected, readOnly, icon });
   }
 
   const dock = { x: dockX, y: dockY, width: dockWidth, height: dockHeight };
@@ -68,7 +68,8 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     const rowWidth = dock.width - inset * 2;
     const topLeftWidth = Math.floor((rowWidth - buttonGap) * 0.62);
     const topRightWidth = rowWidth - buttonGap - topLeftWidth;
-    const bottomWidth = Math.floor((rowWidth - buttonGap * 2) / 3);
+    const tiltButtonWidth = buttonHeight;
+    const bottomWidth = Math.floor((rowWidth - tiltButtonWidth - buttonGap * 3) / 3);
     const bottomY = dock.y + 54;
     const photoY = dock.y + 98;
 
@@ -76,7 +77,18 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     addButton(dock.x + inset + topLeftWidth + buttonGap, dock.y + 10, topRightWidth, buttonHeight, state.paused ? "RESUME" : "PAUSE", { type: "pause" }, state.paused);
     addButton(dock.x + inset, bottomY, bottomWidth, buttonHeight, "TOOLS", { type: "toggle-section", value: "tools" }, state.hudSection === "tools");
     addButton(dock.x + inset + bottomWidth + buttonGap, bottomY, bottomWidth, buttonHeight, "WORLD", { type: "toggle-section", value: "world" }, state.hudSection === "world");
-    addButton(dock.x + inset + (bottomWidth + buttonGap) * 2, bottomY, rowWidth - bottomWidth * 2 - buttonGap * 2, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
+    addButton(dock.x + inset + (bottomWidth + buttonGap) * 2, bottomY, bottomWidth, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
+    addButton(
+      dock.x + dock.width - inset - tiltButtonWidth,
+      bottomY,
+      tiltButtonWidth,
+      buttonHeight,
+      "",
+      { type: "tilt-toggle" },
+      state.tiltEnabled,
+      false,
+      "tilt",
+    );
     if (photoToolActive) {
       const sideButtonWidth = 56;
       const labelWidth = rowWidth - sideButtonWidth * 2 - buttonGap * 2;
@@ -177,28 +189,15 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
         );
       });
     } else {
-      const showTilt = compact;
-      panel.height = compact ? 188 : 110;
+      panel.height = compact ? 146 : 110;
       panel.y = Math.max(8, panel.y - panel.height);
       panels.push(panel);
 
       const halfWidth = Math.floor((panel.width - inset * 2 - buttonGap) / 2);
       const actionY = panel.y + (compact ? 32 : 24);
-      const tiltY = panel.y + 82;
-      const photoY = panel.y + (compact ? (showTilt ? 124 : 82) : 56);
+      const photoY = panel.y + (compact ? 82 : 56);
       addButton(panel.x + inset, actionY, halfWidth, buttonHeight, "RESEED", { type: "reseed" });
       addButton(panel.x + inset + halfWidth + buttonGap, actionY, halfWidth, buttonHeight, "CLEAR", { type: "clear" });
-      if (showTilt) {
-        addButton(
-          panel.x + inset,
-          tiltY,
-          panel.width - inset * 2,
-          buttonHeight,
-          state.tiltAvailable ? (state.tiltEnabled ? "TILT ON" : "TILT OFF") : "TILT N/A",
-          { type: "tilt-toggle" },
-          state.tiltEnabled,
-        );
-      }
       addButton(panel.x + inset, photoY, compact ? 62 : 54, buttonHeight, "PREV", { type: "photo-prev" });
       addButton(panel.x + panel.width - inset - (compact ? 62 : 54), photoY, compact ? 62 : 54, buttonHeight, "NEXT", { type: "photo-next" });
       const photoLabelWidth = Math.max(88, panel.width - inset * 2 - 124);
@@ -274,6 +273,40 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+function drawTiltIcon(ctx, button, active) {
+  const cx = button.x + button.width / 2;
+  const cy = button.y + button.height / 2;
+  const scale = Math.min(button.width, button.height) / 34;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.42);
+  ctx.strokeStyle = active ? "rgba(255, 244, 220, 0.96)" : "rgba(220, 228, 236, 0.78)";
+  ctx.fillStyle = active ? "rgba(255, 210, 122, 0.24)" : "rgba(255, 255, 255, 0.04)";
+  ctx.lineWidth = Math.max(1.4, 1.8 * scale);
+  roundRect(ctx, -5.5 * scale, -10 * scale, 11 * scale, 20 * scale, 2.5 * scale);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 7 * scale, 1.1 * scale, 0, Math.PI * 2);
+  ctx.fillStyle = active ? "rgba(255, 244, 220, 0.96)" : "rgba(220, 228, 236, 0.72)";
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = active ? "rgba(255, 210, 122, 0.82)" : "rgba(220, 228, 236, 0.48)";
+  ctx.lineWidth = Math.max(1.2, 1.5 * scale);
+  ctx.beginPath();
+  ctx.arc(cx, cy, 11 * scale, -0.25, 1.08);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + 5.6 * scale, cy + 10.2 * scale);
+  ctx.lineTo(cx + 10.6 * scale, cy + 11.2 * scale);
+  ctx.lineTo(cx + 8.7 * scale, cy + 6.6 * scale);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelRatio = 1, resumeHover = null, toast = null }) {
@@ -383,7 +416,11 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
     } else {
       ctx.fillStyle = "rgba(220, 228, 236, 0.75)";
     }
-    ctx.fillText(button.label, button.x + button.width / 2, button.y + button.height / 2);
+    if (button.icon === "tilt") {
+      drawTiltIcon(ctx, button, isSelected);
+    } else {
+      ctx.fillText(button.label, button.x + button.width / 2, button.y + button.height / 2);
+    }
     ctx.restore();
   }
   ctx.textAlign = "left";

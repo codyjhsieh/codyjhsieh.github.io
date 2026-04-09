@@ -2,9 +2,10 @@ import "./styles.css";
 
 import { applyPhotoStamp, applyResumeStamp, loadPhotoStamps } from "./photos";
 import { CanvasRenderer } from "./render";
+import { isVisibleResumePixel } from "./resumePixels";
 import { BRUSH_SIZES, createAppState } from "./state";
 import { SandSimulation, SPECIES } from "./simulation";
-import { applyTimeTheme, getCurrentTimeTheme } from "./timeTheme";
+import { applyTimeTheme, getCurrentTimeTheme, getTimeThemePreviewSequence } from "./timeTheme";
 import { drawHud, handleHudPointer } from "./ui";
 
 const CELL_SIZE = 4;
@@ -58,8 +59,6 @@ let hudPixelRatio = 1;
 let hudDirty = true;
 let lastHudSignature = "";
 let lastHudDrawTime = 0;
-let resumeCells = new Set();
-let resumeCellColors = new Map();
 let resumeHover = null; // { viewX, viewY } or null
 let appReady = false;
 let tiltListening = false;
@@ -72,9 +71,22 @@ let lastTiltDataAt = 0;
 let tiltSensorTimer = null;
 let toastMessage = "";
 let toastExpiresAt = 0;
+const themePreviewSequence = new URLSearchParams(window.location.search).has("themePreview")
+  ? getTimeThemePreviewSequence()
+  : null;
+let themePreviewIndex = 0;
+let nextThemePreviewAt = performance.now() + 2000;
 
 function updateTimeTheme() {
-  const nextTheme = getCurrentTimeTheme();
+  let nextTheme = getCurrentTimeTheme();
+  if (themePreviewSequence) {
+    const now = performance.now();
+    if (now >= nextThemePreviewAt) {
+      themePreviewIndex = (themePreviewIndex + 1) % themePreviewSequence.length;
+      nextThemePreviewAt = now + 2000;
+    }
+    nextTheme = themePreviewSequence[themePreviewIndex];
+  }
   if (nextTheme.id === activeTimeTheme.id) {
     return;
   }
@@ -106,11 +118,7 @@ function getActiveToast(now) {
 function placeResume(slot = PHOTO_DISPLAY_SLOTS.find((item) => item.resume)) {
   const cx = Math.floor(simulation.width * (slot?.x ?? 0.5));
   const cy = Math.floor(simulation.height * (slot?.y ?? 0.46));
-  resumeCells = applyResumeStamp(simulation, cx, cy);
-  resumeCellColors = new Map();
-  for (const index of resumeCells) {
-    resumeCellColors.set(index, simulation.photoColors[index]);
-  }
+  applyResumeStamp(simulation, cx, cy);
 }
 
 function decorateSceneWithPhotos() {
@@ -398,16 +406,7 @@ function enablePhoneTilt({ fromPrompt = false } = {}) {
 }
 
 function isResumeHit(point) {
-  if (!resumeCells.size) {
-    return false;
-  }
-  const index = simulation.index(point.x, point.y);
-  const resumeColor = resumeCellColors.get(index);
-  return (
-    resumeColor !== undefined &&
-    simulation.types[index] === SPECIES.PHOTO &&
-    simulation.photoColors[index] === resumeColor
-  );
+  return isVisibleResumePixel(simulation, simulation.index(point.x, point.y));
 }
 
 function openResume() {

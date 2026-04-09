@@ -1,5 +1,6 @@
 import { SPECIES } from "./simulation";
 import { PHOTO_STAMP_DATA } from "./photoStamps.generated";
+import { markResumePixel } from "./resumePixels";
 
 let photoStampCache = null;
 
@@ -146,6 +147,7 @@ function applyResumeStamp(simulation, centerX, centerY) {
     if (x < 0 || x >= simulation.width || y < 0 || y >= simulation.height) continue;
     const index = simulation.index(x, y);
     simulation.setPhotoCell(index, pixel.color);
+    markResumePixel(simulation, index);
     indices.add(index);
   }
 

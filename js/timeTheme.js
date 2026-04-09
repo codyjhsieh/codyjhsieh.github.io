@@ -98,6 +98,10 @@ function getCurrentTimeTheme(date = new Date()) {
   return theme;
 }
 
+function getTimeThemePreviewSequence() {
+  return ["night", "dawn", "day", "dusk"].map((id) => TIME_THEMES.find((theme) => theme.id === id));
+}
+
 function applyTimeTheme(theme) {
   const root = document.documentElement;
   root.dataset.timeTheme = theme.id;
@@ -106,4 +110,4 @@ function applyTimeTheme(theme) {
   }
 }
 
-export { applyTimeTheme, getCurrentTimeTheme };
+export { applyTimeTheme, getCurrentTimeTheme, getTimeThemePreviewSequence };

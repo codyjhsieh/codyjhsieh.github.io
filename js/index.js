@@ -11,6 +11,8 @@ const MIN_WORLD_WIDTH = 120;
 const MIN_WORLD_HEIGHT = 120;
 const MAX_TICKS_PER_FRAME = 1;
 const MIN_TICKS_PER_FRAME = 1;
+const RESUME_STAMP_WIDTH = 40;
+const RESUME_STAMP_HEIGHT = 52;
 
 const state = createAppState();
 const playfield = document.getElementById("playfield");
@@ -38,12 +40,20 @@ let lastHudSignature = "";
 let lastHudDrawTime = 0;
 let resumeCells = new Set();
 let resumeHover = null; // { viewX, viewY } or null
+let resumeHitBounds = null;
 let appReady = false;
 
 function placeResume() {
   const cx = Math.floor(simulation.width / 2);
   const cy = Math.floor(simulation.height * 0.28);
   resumeCells = applyResumeStamp(simulation, cx, cy);
+  const hitPadding = Math.max(8, Math.round(Math.min(simulation.width, simulation.height) * 0.025));
+  resumeHitBounds = {
+    left: Math.max(0, cx - Math.floor(RESUME_STAMP_WIDTH / 2) - hitPadding),
+    right: Math.min(simulation.width - 1, cx + Math.ceil(RESUME_STAMP_WIDTH / 2) + hitPadding),
+    top: Math.max(0, cy - Math.floor(RESUME_STAMP_HEIGHT / 2) - hitPadding),
+    bottom: Math.min(simulation.height - 1, cy + Math.ceil(RESUME_STAMP_HEIGHT / 2) + hitPadding),
+  };
 }
 
 function decorateSceneWithPhotos() {
@@ -149,6 +159,25 @@ function paintStroke(from, to) {
   }
 }
 
+function isResumeHit(point) {
+  if (!resumeHitBounds) {
+    return false;
+  }
+  return (
+    point.x >= resumeHitBounds.left &&
+    point.x <= resumeHitBounds.right &&
+    point.y >= resumeHitBounds.top &&
+    point.y <= resumeHitBounds.bottom
+  );
+}
+
+function openResume() {
+  const opened = window.open("/assets/Resume.pdf", "_blank");
+  if (!opened) {
+    window.location.href = "/assets/Resume.pdf";
+  }
+}
+
 function handlePointerDown(event) {
   if (!appReady) {
     return;
@@ -218,12 +247,10 @@ function handlePointerDown(event) {
   });
   lastPoint = toWorldPoint(event);
   if (!handled) {
-    // Check if clicking on a surviving resume cell
-    const clickIndex = simulation.index(lastPoint.x, lastPoint.y);
-    if (resumeCells.has(clickIndex) && simulation.types[clickIndex] === SPECIES.PHOTO) {
+    if (isResumeHit(lastPoint)) {
       resumeHover = null;
       hudDirty = true;
-      window.open("/assets/Resume.pdf", "_blank");
+      openResume();
       drawing = false;
       canvas.setPointerCapture(event.pointerId);
       return;
@@ -247,8 +274,7 @@ function handlePointerMove(event) {
 
   if (!drawing) {
     const pt = toWorldPoint(event);
-    const idx = simulation.index(pt.x, pt.y);
-    const onResume = resumeCells.has(idx) && simulation.types[idx] === SPECIES.PHOTO;
+    const onResume = isResumeHit(pt);
     canvas.style.cursor = onResume ? "pointer" : "";
     const rect = canvas.getBoundingClientRect();
     const prev = resumeHover;

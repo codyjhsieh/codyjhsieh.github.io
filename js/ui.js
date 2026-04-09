@@ -379,7 +379,7 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
 
   // Resume tooltip
   if (resumeHover) {
-    const tipText = "Click to view resume";
+    const tipText = resumeHover.text ?? "Click to view resume";
     ctx.font = compact ? "12px monospace" : "11px monospace";
     const tipW = ctx.measureText(tipText).width + 16;
     const tipH = compact ? 28 : 24;

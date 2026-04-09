@@ -20,6 +20,8 @@ const PHOTO_DISPLAY_SLOTS = [
   { x: 0.68, y: 0.31 },
   { x: 0.88, y: 0.43 },
 ];
+const TILT_SMOOTHING = 0.18;
+const TILT_DEAD_ZONE = 0.055;
 
 const state = createAppState();
 const playfield = document.getElementById("playfield");
@@ -49,6 +51,11 @@ let resumeCells = new Set();
 let resumeHover = null; // { viewX, viewY } or null
 let resumeHitBounds = null;
 let appReady = false;
+let tiltListening = false;
+let tiltPermissionRequested = false;
+let tiltX = 0;
+let tiltY = 1;
+let lastMotionTiltAt = 0;
 
 function placeResume(slot = PHOTO_DISPLAY_SLOTS.find((item) => item.resume)) {
   const cx = Math.floor(simulation.width * (slot?.x ?? 0.5));
@@ -167,6 +174,100 @@ function paintStroke(from, to) {
   }
 }
 
+function getScreenAngle() {
+  if (window.screen?.orientation && typeof window.screen.orientation.angle === "number") {
+    return window.screen.orientation.angle;
+  }
+  return typeof window.orientation === "number" ? window.orientation : 0;
+}
+
+function rotateTiltToScreen(x, y) {
+  const angle = ((getScreenAngle() % 360) + 360) % 360;
+  if (angle === 90) {
+    return { x: -y, y: x };
+  }
+  if (angle === 180) {
+    return { x: -x, y: -y };
+  }
+  if (angle === 270) {
+    return { x: y, y: -x };
+  }
+  return { x, y };
+}
+
+function applyTiltGravity(rawX, rawY) {
+  const rotated = rotateTiltToScreen(rawX, rawY);
+  const magnitude = Math.hypot(rotated.x, rotated.y);
+  if (magnitude < TILT_DEAD_ZONE) {
+    return;
+  }
+  const nextX = rotated.x / magnitude;
+  const nextY = rotated.y / magnitude;
+  tiltX += (nextX - tiltX) * TILT_SMOOTHING;
+  tiltY += (nextY - tiltY) * TILT_SMOOTHING;
+  simulation.setGravity(tiltX, tiltY);
+}
+
+function handleDeviceMotion(event) {
+  const gravity = event.accelerationIncludingGravity;
+  if (!gravity || typeof gravity.x !== "number" || typeof gravity.y !== "number") {
+    return;
+  }
+  lastMotionTiltAt = performance.now();
+  applyTiltGravity(gravity.x / 9.80665, -gravity.y / 9.80665);
+}
+
+function handleDeviceOrientation(event) {
+  if (performance.now() - lastMotionTiltAt < 250) {
+    return;
+  }
+  if (typeof event.gamma !== "number" || typeof event.beta !== "number") {
+    return;
+  }
+  applyTiltGravity(Math.sin(event.gamma * Math.PI / 180), Math.sin(event.beta * Math.PI / 180));
+}
+
+function startTiltListeners() {
+  if (tiltListening) {
+    return;
+  }
+  tiltListening = true;
+  window.addEventListener("devicemotion", handleDeviceMotion, { passive: true });
+  window.addEventListener("deviceorientation", handleDeviceOrientation, { passive: true });
+}
+
+function enablePhoneTilt() {
+  if (tiltPermissionRequested) {
+    startTiltListeners();
+    return;
+  }
+  tiltPermissionRequested = true;
+
+  const motion = window.DeviceMotionEvent;
+  const orientation = window.DeviceOrientationEvent;
+  const motionPermission = motion?.requestPermission;
+  const orientationPermission = orientation?.requestPermission;
+  if (typeof motionPermission === "function") {
+    motionPermission.call(motion)
+      .then((state) => {
+        if (state === "granted") {
+          startTiltListeners();
+        }
+      })
+      .catch(() => {});
+  } else if (typeof orientationPermission === "function") {
+    orientationPermission.call(orientation)
+      .then((state) => {
+        if (state === "granted") {
+          startTiltListeners();
+        }
+      })
+      .catch(() => {});
+  } else {
+    startTiltListeners();
+  }
+}
+
 function isResumeHit(point) {
   if (!resumeHitBounds) {
     return false;
@@ -189,6 +290,9 @@ function openResume() {
 function handlePointerDown(event) {
   if (!appReady) {
     return;
+  }
+  if (event.pointerType !== "mouse") {
+    enablePhoneTilt();
   }
 
   const rect = hudCanvas.getBoundingClientRect();

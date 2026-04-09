@@ -52,6 +52,8 @@ class SandSimulation {
     this.dirtyMaxY = 0;
     this.hasDirtyRegion = false;
     this.blackHoleIndices = new Set();
+    this.gravityX = 0;
+    this.gravityY = 1;
     this.resize(width, height);
   }
 
@@ -188,6 +190,18 @@ class SandSimulation {
   seed(sceneId = "dunes") {
     this.clear();
     this.applyScene(sceneId);
+  }
+
+  setGravity(x, y) {
+    const magnitude = Math.hypot(x, y);
+    const nextX = magnitude < 0.12 ? 0 : x / magnitude;
+    const nextY = magnitude < 0.12 ? 1 : y / magnitude;
+    if (Math.abs(nextX - this.gravityX) < 0.025 && Math.abs(nextY - this.gravityY) < 0.025) {
+      return;
+    }
+    this.gravityX = nextX;
+    this.gravityY = nextY;
+    this.activateAll();
   }
 
   setLockedCell(index, type, data = 0) {
@@ -580,17 +594,19 @@ class SandSimulation {
       const minY = this.activeMinY;
       const maxY = this.activeMaxY;
       this.beginStep();
-      for (let y = maxY; y >= minY; y -= 1) {
-        const leftToRight = (this.frame & 1) === 0;
-        if (leftToRight) {
-          let index = y * this.width + minX;
-          for (let x = minX; x <= maxX; x += 1, index += 1) {
-            this.updateCell(index, x, y);
+      const yStep = this.gravityY >= 0 ? -1 : 1;
+      const yStart = this.gravityY >= 0 ? maxY : minY;
+      const yEnd = this.gravityY >= 0 ? minY - 1 : maxY + 1;
+      const xForward = Math.abs(this.gravityX) < 0.12 ? (this.frame & 1) === 0 : this.gravityX < 0;
+
+      for (let y = yStart; y !== yEnd; y += yStep) {
+        if (xForward) {
+          for (let x = minX; x <= maxX; x += 1) {
+            this.updateCell(y * this.width + x, x, y);
           }
         } else {
-          let index = y * this.width + maxX;
-          for (let x = maxX; x >= minX; x -= 1, index -= 1) {
-            this.updateCell(index, x, y);
+          for (let x = maxX; x >= minX; x -= 1) {
+            this.updateCell(y * this.width + x, x, y);
           }
         }
       }
@@ -685,29 +701,16 @@ class SandSimulation {
   }
 
   tryMoveDense(index, x, y, swapsWith) {
-    if (y + 1 >= this.height) {
-      return false;
-    }
-
-    const belowIndex = this.index(x, y + 1);
-    const below = this.types[belowIndex];
-    if (below === SPECIES.EMPTY) {
-      this.moveCell(index, belowIndex);
-      return true;
-    }
-    if (swapsWith.includes(below)) {
-      this.swapCells(index, belowIndex);
-      return true;
-    }
-
-    const startLeft = ((this.frame + x + y) & 1) === 0;
-    for (let i = 0; i < 2; i += 1) {
-      const dx = startLeft ? (i === 0 ? -1 : 1) : (i === 0 ? 1 : -1);
+    const directions = this.gravityStepDirections(x, y, 0.16);
+    for (let i = 0; i < directions.length; i += 1) {
+      const dx = directions[i][0];
+      const dy = directions[i][1];
       const nx = x + dx;
-      if (nx < 0 || nx >= this.width || y + 1 >= this.height) {
+      const ny = y + dy;
+      if (!this.inBounds(nx, ny)) {
         continue;
       }
-      const targetIndex = this.index(nx, y + 1);
+      const targetIndex = this.index(nx, ny);
       const target = this.types[targetIndex];
       if (target === SPECIES.EMPTY) {
         this.moveCell(index, targetIndex);
@@ -722,6 +725,49 @@ class SandSimulation {
     return false;
   }
 
+  gravityStepDirections(x, y, threshold = 0.12) {
+    const candidates = [
+      [0, 1], [-1, 1], [1, 1],
+      [-1, 0], [1, 0],
+      [0, -1], [-1, -1], [1, -1],
+    ];
+    const jitter = ((this.frame + x * 3 + y * 5) & 1) === 0 ? -0.0001 : 0.0001;
+    const directions = [];
+    for (let i = 0; i < candidates.length; i += 1) {
+      const dx = candidates[i][0];
+      const dy = candidates[i][1];
+      const length = dx !== 0 && dy !== 0 ? Math.SQRT2 : 1;
+      const score = (dx * this.gravityX + dy * this.gravityY) / length;
+      if (score > threshold) {
+        directions.push({ dx, dy, score: score + (dx < 0 ? jitter : -jitter) });
+      }
+    }
+    directions.sort((a, b) => b.score - a.score);
+    return directions.map((direction) => [direction.dx, direction.dy]);
+  }
+
+  lateralFlowDirections(x, y) {
+    const gx = this.gravityX;
+    const gy = this.gravityY;
+    const firstSign = ((this.frame + x * 7 + y * 11) & 1) === 0 ? 1 : -1;
+    const candidates = [
+      [Math.round(-gy * firstSign), Math.round(gx * firstSign)],
+      [Math.round(gy * firstSign), Math.round(-gx * firstSign)],
+    ];
+    const directions = [];
+    for (let i = 0; i < candidates.length; i += 1) {
+      const dx = Math.max(-1, Math.min(1, candidates[i][0]));
+      const dy = Math.max(-1, Math.min(1, candidates[i][1]));
+      if ((dx !== 0 || dy !== 0) && !directions.some((direction) => direction[0] === dx && direction[1] === dy)) {
+        directions.push([dx, dy]);
+      }
+    }
+    if (!directions.length) {
+      directions.push([firstSign, 0], [-firstSign, 0]);
+    }
+    return directions;
+  }
+
   updateSand(index, x, y) {
     if (this.tryMoveDense(index, x, y, [SPECIES.WATER, SPECIES.FIRE, SPECIES.OIL])) {
       return;
@@ -730,47 +776,41 @@ class SandSimulation {
   }
 
   updateWater(index, x, y) {
-    if (y + 1 < this.height) {
-      const belowIndex = this.index(x, y + 1);
-      const below = this.types[belowIndex];
-      if (below === SPECIES.EMPTY) {
-        this.moveCell(index, belowIndex);
-        return;
+    const gravityDirs = this.gravityStepDirections(x, y, 0.12);
+    for (let i = 0; i < gravityDirs.length; i += 1) {
+      const nx = x + gravityDirs[i][0];
+      const ny = y + gravityDirs[i][1];
+      if (!this.inBounds(nx, ny)) {
+        continue;
       }
-      if (below === SPECIES.FIRE) {
-        this.setCell(belowIndex, SPECIES.EMPTY, 0);
-        this.moveCell(index, belowIndex);
+      const targetIndex = this.index(nx, ny);
+      const target = this.types[targetIndex];
+      if (target === SPECIES.EMPTY || target === SPECIES.FIRE) {
+        if (target === SPECIES.FIRE) {
+          this.setCell(targetIndex, SPECIES.EMPTY, 0);
+        }
+        this.moveCell(index, targetIndex);
         return;
       }
     }
 
-    const start = (((x >> 1) * 5 + y * 3) & 1) === 0 ? -1 : 1;
-    const dirs = [start, -start];
+    const dirs = this.lateralFlowDirections(x, y);
 
     for (let i = 0; i < dirs.length; i += 1) {
-      const dx = dirs[i];
+      const dx = dirs[i][0];
+      const dy = dirs[i][1];
       const nx = x + dx;
-      if (nx < 0 || nx >= this.width) {
+      const ny = y + dy;
+      if (!this.inBounds(nx, ny)) {
         continue;
       }
 
-      if (y + 1 < this.height) {
-        const diagonalIndex = this.index(nx, y + 1);
-        const diagonal = this.types[diagonalIndex];
-        if (diagonal === SPECIES.EMPTY || diagonal === SPECIES.FIRE) {
-          if (diagonal === SPECIES.FIRE) {
-            this.setCell(diagonalIndex, SPECIES.EMPTY, 0);
-          }
-          this.moveCell(index, diagonalIndex);
-          return;
-        }
-      }
-
-      const sideIndex = this.index(nx, y);
+      const sideIndex = this.index(nx, ny);
       const side = this.types[sideIndex];
       if ((side === SPECIES.EMPTY || side === SPECIES.FIRE) && !this.isMarked(sideIndex)) {
-        // Only spread sideways if the destination could lead to a drop
-        if (y + 1 >= this.height || this.types[this.index(nx, y + 1)] === SPECIES.EMPTY || this.types[this.index(nx, y + 1)] === SPECIES.FIRE) {
+        const downstreamX = nx + Math.round(this.gravityX);
+        const downstreamY = ny + Math.round(this.gravityY);
+        if (!this.inBounds(downstreamX, downstreamY) || this.types[this.index(downstreamX, downstreamY)] === SPECIES.EMPTY || this.types[this.index(downstreamX, downstreamY)] === SPECIES.FIRE) {
           if (side === SPECIES.FIRE) {
             this.setCell(sideIndex, SPECIES.EMPTY, 0);
           }
@@ -781,15 +821,19 @@ class SandSimulation {
     }
 
     // Pressure flow: only for cells in a pile (water above) to equalize height
-    if (y > 0 && this.types[this.index(x, y - 1)] === SPECIES.WATER) {
+    const upstreamX = x - Math.round(this.gravityX);
+    const upstreamY = y - Math.round(this.gravityY);
+    if (this.inBounds(upstreamX, upstreamY) && this.types[this.index(upstreamX, upstreamY)] === SPECIES.WATER) {
       for (let i = 0; i < dirs.length; i += 1) {
-        const dir = dirs[i];
+        const dirX = dirs[i][0];
+        const dirY = dirs[i][1];
         for (let reach = 1; reach <= 20; reach += 1) {
-          const nx = x + dir * reach;
-          if (nx < 0 || nx >= this.width) {
+          const nx = x + dirX * reach;
+          const ny = y + dirY * reach;
+          if (!this.inBounds(nx, ny)) {
             break;
           }
-          const farIndex = this.index(nx, y);
+          const farIndex = this.index(nx, ny);
           const t = this.types[farIndex];
           if (t === SPECIES.EMPTY) {
             this.moveCell(index, farIndex);
@@ -819,44 +863,41 @@ class SandSimulation {
       }
     }
 
-    if (y + 1 < this.height) {
-      const belowIndex = this.index(x, y + 1);
-      const below = this.types[belowIndex];
-      if (below === SPECIES.EMPTY || below === SPECIES.FIRE) {
-        if (below === SPECIES.FIRE) {
-          this.setCell(belowIndex, SPECIES.EMPTY, 0);
+    const gravityDirs = this.gravityStepDirections(x, y, 0.12);
+    for (let i = 0; i < gravityDirs.length; i += 1) {
+      const nx = x + gravityDirs[i][0];
+      const ny = y + gravityDirs[i][1];
+      if (!this.inBounds(nx, ny)) {
+        continue;
+      }
+      const targetIndex = this.index(nx, ny);
+      const target = this.types[targetIndex];
+      if (target === SPECIES.EMPTY || target === SPECIES.FIRE) {
+        if (target === SPECIES.FIRE) {
+          this.setCell(targetIndex, SPECIES.EMPTY, 0);
         }
-        this.moveCell(index, belowIndex);
+        this.moveCell(index, targetIndex);
         return;
       }
     }
 
-    const start = (((x >> 1) * 5 + y * 3) & 1) === 0 ? -1 : 1;
-    const dirs = [start, -start];
+    const dirs = this.lateralFlowDirections(x, y);
 
     for (let i = 0; i < dirs.length; i += 1) {
-      const dx = dirs[i];
+      const dx = dirs[i][0];
+      const dy = dirs[i][1];
       const nx = x + dx;
-      if (nx < 0 || nx >= this.width) {
+      const ny = y + dy;
+      if (!this.inBounds(nx, ny)) {
         continue;
       }
 
-      if (y + 1 < this.height) {
-        const diagonalIndex = this.index(nx, y + 1);
-        const diagonal = this.types[diagonalIndex];
-        if (diagonal === SPECIES.EMPTY || diagonal === SPECIES.FIRE) {
-          if (diagonal === SPECIES.FIRE) {
-            this.setCell(diagonalIndex, SPECIES.EMPTY, 0);
-          }
-          this.moveCell(index, diagonalIndex);
-          return;
-        }
-      }
-
-      const sideIndex = this.index(nx, y);
+      const sideIndex = this.index(nx, ny);
       const side = this.types[sideIndex];
       if (side === SPECIES.EMPTY && !this.isMarked(sideIndex)) {
-        if (y + 1 >= this.height || this.types[this.index(nx, y + 1)] === SPECIES.EMPTY) {
+        const downstreamX = nx + Math.round(this.gravityX);
+        const downstreamY = ny + Math.round(this.gravityY);
+        if (!this.inBounds(downstreamX, downstreamY) || this.types[this.index(downstreamX, downstreamY)] === SPECIES.EMPTY) {
           this.moveCell(index, sideIndex);
           return;
         }

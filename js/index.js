@@ -1,6 +1,6 @@
 import "./styles.css";
 
-import { applyPhotoStamp, applyResumeStamp, loadInitialPhotoStamps, loadPhotoStamps } from "./photos";
+import { applyPhotoStamp, applyResumeStamp, loadPhotoStamps } from "./photos";
 import { CanvasRenderer } from "./render";
 import { BRUSH_SIZES, createAppState } from "./state";
 import { SandSimulation, SPECIES } from "./simulation";
@@ -16,6 +16,7 @@ const state = createAppState();
 const playfield = document.getElementById("playfield");
 const canvas = document.getElementById("sand-canvas");
 const hudCanvas = document.getElementById("hud-canvas");
+const loadingOverlay = document.getElementById("loading-overlay");
 const simulation = new SandSimulation(MIN_WORLD_WIDTH, MIN_WORLD_HEIGHT);
 const renderer = new CanvasRenderer({ canvas, simulation });
 const hudCtx = hudCanvas.getContext("2d");
@@ -37,6 +38,7 @@ let lastHudSignature = "";
 let lastHudDrawTime = 0;
 let resumeCells = new Set();
 let resumeHover = null; // { viewX, viewY } or null
+let appReady = false;
 
 function placeResume() {
   const cx = Math.floor(simulation.width / 2);
@@ -115,10 +117,6 @@ function resizeHudCanvas() {
   hudDirty = true;
 }
 
-resizeWorld();
-simulation.seed(state.activeScene);
-placeResume();
-
 function toWorldPoint(event) {
   const rect = canvas.getBoundingClientRect();
   const x = Math.floor(((event.clientX - rect.left) / rect.width) * simulation.width);
@@ -152,6 +150,10 @@ function paintStroke(from, to) {
 }
 
 function handlePointerDown(event) {
+  if (!appReady) {
+    return;
+  }
+
   const rect = hudCanvas.getBoundingClientRect();
   const hudPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
   const handled = handleHudPointer({
@@ -239,6 +241,10 @@ function handlePointerDown(event) {
 }
 
 function handlePointerMove(event) {
+  if (!appReady) {
+    return;
+  }
+
   if (!drawing) {
     const pt = toWorldPoint(event);
     const idx = simulation.index(pt.x, pt.y);
@@ -257,6 +263,10 @@ function handlePointerMove(event) {
 }
 
 function handlePointerUp(event) {
+  if (!appReady) {
+    return;
+  }
+
   drawing = false;
   lastPoint = null;
 
@@ -360,29 +370,44 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-loadInitialPhotoStamps()
-  .then((stamps) => {
-    if (stamps.length && !photosDecorated) {
-      photoStamps = stamps;
-      simulation.seed(state.activeScene);
-      decorateSceneWithPhotos();
-      hudDirty = true;
-    }
-    return loadPhotoStamps();
-  })
-  .then((stamps) => {
-    if (!stamps) {
-      return;
-    }
-    photoStamps = stamps;
-    if (!photosDecorated && stamps.length) {
-      simulation.seed(state.activeScene);
-      decorateSceneWithPhotos();
-    }
-    hudDirty = true;
-  })
-  .catch((error) => {
-    console.error("Failed to load photo stamps:", error);
-  });
+function hideLoadingOverlay() {
+  if (!loadingOverlay) {
+    return;
+  }
+  loadingOverlay.classList.add("is-hidden");
+  loadingOverlay.setAttribute("aria-hidden", "true");
+}
 
-requestAnimationFrame(frame);
+async function boot() {
+  resizeWorld();
+  photoStamps = await loadPhotoStamps();
+  simulation.seed(state.activeScene);
+  decorateSceneWithPhotos();
+  metrics = simulation.sampleMetrics();
+  appReady = true;
+  hudDirty = true;
+
+  const now = performance.now();
+  lastFrameTime = now;
+  renderer.render();
+  updateHud(now, 60);
+  hideLoadingOverlay();
+  requestAnimationFrame(frame);
+}
+
+boot().catch((error) => {
+  console.error("Failed to boot sand lab:", error);
+  resizeWorld();
+  simulation.seed(state.activeScene);
+  placeResume();
+  metrics = simulation.sampleMetrics();
+  appReady = true;
+  hudDirty = true;
+
+  const now = performance.now();
+  lastFrameTime = now;
+  renderer.render();
+  updateHud(now, 60);
+  hideLoadingOverlay();
+  requestAnimationFrame(frame);
+});

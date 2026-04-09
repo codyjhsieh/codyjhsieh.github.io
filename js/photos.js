@@ -67,7 +67,7 @@ function createPhotoStamp(image) {
 }
 
 async function loadPhotoStamps() {
-  const stamps = await Promise.all(
+  const results = await Promise.allSettled(
     PHOTO_SOURCES.map(
       (src) =>
         new Promise((resolve, reject) => {
@@ -86,31 +86,13 @@ async function loadPhotoStamps() {
     ),
   );
 
-  return stamps;
-}
-
-async function loadInitialPhotoStamps(count = 5) {
-  const sources = PHOTO_SOURCES.slice(0, Math.max(0, count));
   const stamps = [];
-
-  for (const src of sources) {
-    try {
-      const stamp = await new Promise((resolve, reject) => {
-        const image = new Image();
-        image.decoding = "async";
-        image.onload = () => {
-          resolve({
-            src,
-            label: labelFromSource(src),
-            stamp: createPhotoStamp(image),
-          });
-        };
-        image.onerror = reject;
-        image.src = src;
-      });
-      stamps.push(stamp);
-    } catch (error) {
-      console.warn("Failed to load initial photo:", src, error);
+  for (let i = 0; i < results.length; i += 1) {
+    const result = results[i];
+    if (result.status === "fulfilled") {
+      stamps.push(result.value);
+    } else {
+      console.warn("Failed to load photo:", PHOTO_SOURCES[i], result.reason);
     }
   }
 
@@ -210,4 +192,4 @@ function applyResumeStamp(simulation, centerX, centerY) {
   return indices;
 }
 
-export { applyPhotoStamp, applyResumeStamp, loadInitialPhotoStamps, loadPhotoStamps };
+export { applyPhotoStamp, applyResumeStamp, loadPhotoStamps };

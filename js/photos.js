@@ -1,133 +1,38 @@
 import { SPECIES } from "./simulation";
+import { PHOTO_STAMP_DATA } from "./photoStamps.generated";
 
-const PHOTO_SOURCES = [
-  "/assets/images/prof.jpg",
-  "/assets/images/1.jpg",
-  "/assets/images/2.jpg",
-  "/assets/images/3.jpg",
-  "/assets/images/4.jpg",
-  "/assets/images/5.jpg",
-  "/assets/images/6.jpg",
-  "/assets/images/7.jpg",
-  "/assets/images/8.jpg",
-  "/assets/images/9.jpg",
-  "/assets/images/10.jpg",
-  "/assets/images/1proj.jpg",
-  "/assets/images/2proj.jpg",
-  "/assets/images/3proj.jpg",
-  "/assets/images/4proj.jpg",
-  "/assets/images/blog1.jpg",
-  "/assets/images/DSC00352.jpg",
-  "/assets/images/DSC00359.jpg",
-];
-
-const PHOTO_LOAD_TIMEOUT_MS = 2400;
-
-function labelFromSource(src) {
-  return src.split("/").pop().replace(/\.[^.]+$/, "");
-}
+let photoStampCache = null;
 
 function packColor(r, g, b, a = 255) {
   return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;
 }
 
-function createPhotoStamp(image) {
-  const size = 52;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-
-  const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-  const dx = (size - width) / 2;
-  const dy = (size - height) / 2;
-
-  ctx.clearRect(0, 0, size, size);
-  ctx.drawImage(image, dx, dy, width, height);
-
-  const { data } = ctx.getImageData(0, 0, size, size);
-  const pixels = [];
-
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      const i = (x + y * size) * 4;
-      if (data[i + 3] < 72) {
-        continue;
-      }
-      pixels.push({
-        x,
-        y,
-        species: SPECIES.PHOTO,
-        color: packColor(data[i], data[i + 1], data[i + 2], 255),
-      });
-    }
+function decodePhotoStamp(data) {
+  const rgb = atob(data.rgb);
+  const colors = new Uint32Array(data.size * data.size);
+  for (let index = 0; index < colors.length; index += 1) {
+    const offset = index * 3;
+    colors[index] = packColor(
+      rgb.charCodeAt(offset),
+      rgb.charCodeAt(offset + 1),
+      rgb.charCodeAt(offset + 2),
+      255,
+    );
   }
 
-  return { size, pixels };
+  return { size: data.size, colors };
 }
 
-function loadPhotoStamp(src, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    let settled = false;
-    const timeoutId = window.setTimeout(() => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      image.onload = null;
-      image.onerror = null;
-      reject(new Error(`Timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    function settle(callback, value) {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      window.clearTimeout(timeoutId);
-      callback(value);
-    }
-
-    image.decoding = "async";
-    image.fetchPriority = "high";
-    image.loading = "eager";
-    image.onload = () => {
-      try {
-        settle(resolve, {
-          src,
-          label: labelFromSource(src),
-          stamp: createPhotoStamp(image),
-        });
-      } catch (error) {
-        settle(reject, error);
-      }
-    };
-    image.onerror = () => {
-      settle(reject, new Error(`Failed to load ${src}`));
-    };
-    image.src = src;
-  });
-}
-
-async function loadPhotoStamps({ timeoutMs = PHOTO_LOAD_TIMEOUT_MS } = {}) {
-  const results = await Promise.allSettled(
-    PHOTO_SOURCES.map((src) => loadPhotoStamp(src, timeoutMs)),
-  );
-
-  const stamps = [];
-  for (let i = 0; i < results.length; i += 1) {
-    const result = results[i];
-    if (result.status === "fulfilled") {
-      stamps.push(result.value);
-    } else {
-      console.warn("Failed to load photo:", PHOTO_SOURCES[i], result.reason);
-    }
+async function loadPhotoStamps() {
+  if (!photoStampCache) {
+    photoStampCache = PHOTO_STAMP_DATA.map((data) => ({
+      src: data.src,
+      label: data.label,
+      stamp: decodePhotoStamp(data),
+    }));
   }
 
-  return stamps;
+  return photoStampCache;
 }
 
 function applyPhotoStamp(simulation, photoStamp, centerX, centerY) {
@@ -135,8 +40,32 @@ function applyPhotoStamp(simulation, photoStamp, centerX, centerY) {
     return;
   }
 
-  const half = Math.floor(photoStamp.stamp.size / 2);
-  for (const pixel of photoStamp.stamp.pixels) {
+  const { stamp } = photoStamp;
+  const half = Math.floor(stamp.size / 2);
+
+  if (stamp.colors) {
+    for (let sy = 0; sy < stamp.size; sy += 1) {
+      const y = centerY + sy - half;
+      if (y < 0 || y >= simulation.height) {
+        continue;
+      }
+      for (let sx = 0; sx < stamp.size; sx += 1) {
+        const color = stamp.colors[sx + sy * stamp.size];
+        if (!color) {
+          continue;
+        }
+        const x = centerX + sx - half;
+        if (x < 0 || x >= simulation.width) {
+          continue;
+        }
+        const index = simulation.index(x, y);
+        simulation.setPhotoCell(index, color);
+      }
+    }
+    return;
+  }
+
+  for (const pixel of stamp.pixels) {
     const x = centerX + pixel.x - half;
     const y = centerY + pixel.y - half;
     if (x < 0 || x >= simulation.width || y < 0 || y >= simulation.height) {

@@ -10,8 +10,8 @@ module.exports = (_, argv) => {
     entry: "./js/bootstrap.js",
     output: {
       path: path.resolve(__dirname, "dist"),
-      filename: "main.js",
-      chunkFilename: "[name].js",
+      filename: "app.js",
+      chunkFilename: "[name].[contenthash:8].js",
       publicPath: "/",
     },
     devServer: {

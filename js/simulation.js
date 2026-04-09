@@ -442,11 +442,6 @@ class SandSimulation {
       return;
     }
 
-    this.paintLine(this.width * 0.0, floorY - 84, this.width * 0.22, floorY - 96, 5, SPECIES.STONE);
-    this.paintLine(this.width * 0.2, floorY - 96, this.width * 0.48, floorY - 106, 5, SPECIES.STONE);
-    this.paintLine(this.width * 0.46, floorY - 106, this.width * 0.74, floorY - 92, 5, SPECIES.STONE);
-    this.paintLine(this.width * 0.72, floorY - 92, this.width * 1.0, floorY - 98, 5, SPECIES.STONE);
-
     this.paintCircle(this.width * 0.22, floorY - 22, 24, SPECIES.SAND);
     this.paintCircle(this.width * 0.54, floorY - 38, waterRadius(25), SPECIES.WATER);
     this.paintCircle(this.width * 0.82, floorY - 22, 22, SPECIES.SAND);

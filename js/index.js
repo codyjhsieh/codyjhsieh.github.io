@@ -66,8 +66,13 @@ function decorateSceneWithPhotos() {
 
   const count = Math.min(5, photoStamps.length);
   const used = new Set();
-  const spacing = simulation.width / (count + 1);
-  const baseY = Math.max(42, Math.floor(simulation.height * 0.34));
+  const slots = [
+    { x: 0.13, y: 0.42 },
+    { x: 0.33, y: 0.29 },
+    { x: 0.52, y: 0.46 },
+    { x: 0.71, y: 0.31 },
+    { x: 0.89, y: 0.43 },
+  ];
 
   for (let i = 0; i < count; i += 1) {
     let choice = ((Math.random() * photoStamps.length) | 0);
@@ -79,13 +84,15 @@ function decorateSceneWithPhotos() {
     used.add(choice);
 
     const stamp = photoStamps[choice];
-    const jitterX = ((Math.random() * 18) | 0) - 9;
-    const jitterY = ((Math.random() * 12) | 0) - 6;
-    const x = Math.floor(spacing * (i + 1) + jitterX);
-    const y = baseY + jitterY;
+    const slot = slots[i];
+    const jitterX = ((Math.random() * 10) | 0) - 5;
+    const jitterY = ((Math.random() * 8) | 0) - 4;
+    const x = Math.floor(simulation.width * slot.x + jitterX);
+    const y = Math.floor(simulation.height * slot.y + jitterY);
     applyPhotoStamp(simulation, stamp, x, y);
   }
 
+  simulation.applyScene(state.activeScene);
   placeResume();
   metrics = simulation.sampleMetrics();
 }

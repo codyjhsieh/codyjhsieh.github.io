@@ -64,7 +64,7 @@ runTest("rocket stays a single vertically moving pixel before burst", () => {
     lastY = fireworks[0].y;
   }
 
-  assert.ok(burstFrame >= 150 && burstFrame <= 190, `expected burst near 3 seconds, got frame ${burstFrame}`);
+  assert.ok(burstFrame >= 75 && burstFrame <= 100, `expected burst near 1.5 seconds, got frame ${burstFrame}`);
 });
 
 runTest("burst produces multi-stage shells without converting into fire", () => {

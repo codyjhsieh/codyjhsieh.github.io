@@ -84,13 +84,18 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
       addButton(dock.x + dock.width - inset - sideButtonWidth, photoY, sideButtonWidth, buttonHeight, "NEXT", { type: "photo-next" });
     }
   } else {
-    const toolButtonWidth = 92;
-    const sectionButtonWidth = 58;
-    const pauseButtonWidth = 80;
-    addButton(dock.x + inset, dock.y + 11, toolButtonWidth, buttonHeight, toolLabel, { type: "toggle-section", value: "tools" }, state.hudSection === "tools");
-    addButton(dock.x + dock.width - inset - pauseButtonWidth, dock.y + 11, pauseButtonWidth, buttonHeight, state.paused ? "RESUME" : "PAUSE", { type: "pause" }, state.paused);
-    addButton(dock.x + dock.width - inset - pauseButtonWidth - buttonGap - sectionButtonWidth, dock.y + 11, sectionButtonWidth, buttonHeight, "WORLD", { type: "toggle-section", value: "world" }, state.hudSection === "world");
-    addButton(dock.x + dock.width - inset - pauseButtonWidth - buttonGap * 2 - sectionButtonWidth * 2, dock.y + 11, sectionButtonWidth, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
+    const available = dock.width - inset * 2 - buttonGap * 3;
+    const toolButtonWidth = Math.floor(available * 0.34);
+    const pauseButtonWidth = Math.floor(available * 0.28);
+    const sectionButtonWidth = Math.floor((available - toolButtonWidth - pauseButtonWidth) / 2);
+    let cx = dock.x + inset;
+    addButton(cx, dock.y + 11, toolButtonWidth, buttonHeight, toolLabel, { type: "toggle-section", value: "tools" }, state.hudSection === "tools");
+    cx += toolButtonWidth + buttonGap;
+    addButton(cx, dock.y + 11, sectionButtonWidth, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
+    cx += sectionButtonWidth + buttonGap;
+    addButton(cx, dock.y + 11, sectionButtonWidth, buttonHeight, "WORLD", { type: "toggle-section", value: "world" }, state.hudSection === "world");
+    cx += sectionButtonWidth + buttonGap;
+    addButton(cx, dock.y + 11, dock.x + dock.width - inset - cx, buttonHeight, state.paused ? "RESUME" : "PAUSE", { type: "pause" }, state.paused);
     if (photoToolActive) {
       const photoY = dock.y + 39;
       const sideButtonWidth = 56;
@@ -244,54 +249,164 @@ function handleHudPointer({ point, viewWidth, viewHeight, state, photos = [], ca
   return pointInRect(point, layout.bounds);
 }
 
-function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelRatio = 1 }) {
+function roundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelRatio = 1, resumeHover = null }) {
   const layout = getHudLayoutForViewport(viewWidth, viewHeight, state, photos);
   const compact = layout.compact;
   const dock = layout.dock;
   const selected = getLabelForElement(state.activeElement);
+  const now = performance.now();
+  const pulse = Math.sin(now * 0.003) * 0.5 + 0.5;
+  const glowAngle = now * 0.001;
+  const t = Math.sin(glowAngle * 0.5) * 0.5 + 0.5;
+  const t2 = Math.sin(glowAngle * 0.3 + 1.5) * 0.5 + 0.5;
+  const gr = Math.round(255 - 80 * t);
+  const gg = Math.round(180 + 40 * t);
+  const gb = Math.round(100 + 155 * t);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
   ctx.scale(pixelRatio, pixelRatio);
   ctx.textBaseline = "middle";
-  ctx.font = compact ? "14px monospace" : "13px monospace";
+  ctx.font = compact ? "13px monospace" : "12px monospace";
 
-  for (const panel of layout.panels) {
-    ctx.fillStyle = "rgba(8, 12, 18, 0.78)";
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.lineWidth = 1;
-    ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
-    ctx.strokeRect(panel.x + 0.5, panel.y + 0.5, panel.width - 1, panel.height - 1);
-    ctx.fillStyle = "rgba(210, 222, 235, 0.72)";
-    ctx.fillText(panel.title, panel.x + 12, panel.y + 14);
+  const dockR = compact ? 16 : 12;
+  const panelR = compact ? 14 : 10;
+  const btnR = compact ? 8 : 6;
+
+  function drawGlowBox(x, y, w, h, r) {
+    // Background
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 6;
+    roundRect(ctx, x, y, w, h, r);
+    ctx.fillStyle = "rgba(10, 12, 18, 0.7)";
+    ctx.fill();
+    ctx.restore();
+
+    // Layered ambient glow — multiple passes radiating outward
+    const layers = [
+      { blur: 90 + t * 30, opacity: 0.35, width: 10 },
+      { blur: 55 + t * 15, opacity: 0.45, width: 7 },
+      { blur: 30 + t2 * 10, opacity: 0.5, width: 4 },
+      { blur: 12 + t2 * 4, opacity: 0.4, width: 2 },
+      { blur: 4, opacity: 0.15, width: 1 },
+    ];
+    for (const layer of layers) {
+      ctx.save();
+      ctx.shadowColor = `rgba(${gr}, ${gg}, ${gb}, ${layer.opacity.toFixed(2)})`;
+      ctx.shadowBlur = layer.blur;
+      roundRect(ctx, x, y, w, h, r);
+      ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, 0.06)`;
+      ctx.lineWidth = layer.width;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
-  ctx.fillStyle = "rgba(8, 12, 18, 0.68)";
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-  ctx.fillRect(dock.x, dock.y, dock.width, dock.height);
-  ctx.strokeRect(dock.x + 0.5, dock.y + 0.5, dock.width - 1, dock.height - 1);
+  // Panels
+  for (const panel of layout.panels) {
+    drawGlowBox(panel.x, panel.y, panel.width, panel.height, panelR);
+    ctx.fillStyle = "rgba(200, 210, 225, 0.6)";
+    ctx.font = compact ? "10px monospace" : "9px monospace";
+    ctx.fillText(panel.title, panel.x + panelR, panel.y + 14);
+    ctx.font = compact ? "13px monospace" : "12px monospace";
+  }
 
+  // Dock
+  drawGlowBox(dock.x, dock.y, dock.width, dock.height, dockR);
+
+  // Buttons
+  ctx.textAlign = "center";
   for (const button of layout.buttons) {
     const isSelected = button.selected;
-    ctx.fillStyle = isSelected ? "rgba(255, 210, 122, 0.16)" : "rgba(255, 255, 255, 0.04)";
-    ctx.strokeStyle = isSelected ? "rgba(255, 210, 122, 0.5)" : "rgba(255, 255, 255, 0.06)";
-    ctx.fillRect(button.x, button.y, button.width, button.height);
-    ctx.strokeRect(button.x + 0.5, button.y + 0.5, button.width - 1, button.height - 1);
-    ctx.fillStyle = isSelected ? "rgba(255, 244, 220, 0.98)" : "rgba(230, 238, 246, 0.88)";
-    ctx.fillText(button.label, button.x + 6, button.y + button.height * 0.55);
-  }
 
-  ctx.fillStyle = "rgba(166, 182, 198, 0.78)";
-  ctx.fillText(selected, dock.x + 12, dock.y - 10);
+    roundRect(ctx, button.x, button.y, button.width, button.height, btnR);
+    ctx.fillStyle = isSelected
+      ? `rgba(255, 210, 122, ${(0.1 + pulse * 0.06).toFixed(3)})`
+      : "rgba(255, 255, 255, 0.03)";
+    ctx.fill();
+
+    roundRect(ctx, button.x + 0.5, button.y + 0.5, button.width - 1, button.height - 1, btnR);
+    ctx.strokeStyle = isSelected
+      ? `rgba(255, 210, 122, ${(0.3 + pulse * 0.15).toFixed(2)})`
+      : "rgba(255, 255, 255, 0.05)";
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    ctx.save();
+    roundRect(ctx, button.x, button.y, button.width, button.height, btnR);
+    ctx.clip();
+    if (isSelected) {
+      ctx.shadowColor = "rgba(255, 210, 122, 0.6)";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = "rgba(255, 244, 220, 0.95)";
+    } else {
+      ctx.fillStyle = "rgba(220, 228, 236, 0.75)";
+    }
+    ctx.fillText(button.label, button.x + button.width / 2, button.y + button.height / 2);
+    ctx.restore();
+  }
+  ctx.textAlign = "left";
+
+  // Status text
+  ctx.font = "10px monospace";
+  ctx.fillStyle = "rgba(166, 182, 198, 0.6)";
+  ctx.fillText(selected, dock.x + 14, dock.y - 10);
   if (!compact) {
-    ctx.fillText(`FPS ${stats.fps}`, dock.x + dock.width - 52, dock.y - 10);
+    const fpsText = `${stats.fps}`;
+    const fpsW = ctx.measureText(fpsText).width;
+    ctx.fillText(fpsText, dock.x + dock.width - fpsW - 14, dock.y - 10);
   }
 
   if (state.activeElement === SPECIES.PHOTO) {
-    ctx.fillStyle = "rgba(166, 182, 198, 0.72)";
+    ctx.fillStyle = "rgba(166, 182, 198, 0.5)";
     const photoLabel = truncateLabel(photos[state.photoIndex]?.label?.toUpperCase() ?? "LOADING", compact ? 22 : 28);
-    ctx.fillText(`PHOTO ${photoLabel}`, dock.x + 12, dock.y - (compact ? 24 : 26));
+    ctx.fillText(photoLabel, dock.x + 14, dock.y - (compact ? 24 : 26));
+  }
+
+  // Resume tooltip
+  if (resumeHover) {
+    const tipText = "Click to view resume";
+    ctx.font = compact ? "12px monospace" : "11px monospace";
+    const tipW = ctx.measureText(tipText).width + 16;
+    const tipH = compact ? 28 : 24;
+    const tipR = 6;
+    let tipX = resumeHover.viewX - tipW / 2;
+    let tipY = resumeHover.viewY - tipH - 12;
+    tipX = Math.max(4, Math.min(viewWidth - tipW - 4, tipX));
+    tipY = Math.max(4, tipY);
+
+    ctx.save();
+    ctx.shadowColor = `rgba(${gr}, ${gg}, ${gb}, 0.4)`;
+    ctx.shadowBlur = 12;
+    roundRect(ctx, tipX, tipY, tipW, tipH, tipR);
+    ctx.fillStyle = "rgba(10, 12, 18, 0.85)";
+    ctx.fill();
+    ctx.restore();
+
+    roundRect(ctx, tipX + 0.5, tipY + 0.5, tipW - 1, tipH - 1, tipR);
+    ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, 0.35)`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(230, 238, 246, 0.9)";
+    ctx.fillText(tipText, tipX + tipW / 2, tipY + tipH / 2);
+    ctx.textAlign = "left";
   }
 
   ctx.restore();

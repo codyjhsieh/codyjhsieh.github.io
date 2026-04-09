@@ -1,6 +1,6 @@
 import "./styles.css";
 
-import { applyPhotoStamp, loadPhotoStamps } from "./photos";
+import { applyPhotoStamp, applyResumeStamp, loadPhotoStamps } from "./photos";
 import { CanvasRenderer } from "./render";
 import { BRUSH_SIZES, createAppState } from "./state";
 import { SandSimulation, SPECIES } from "./simulation";
@@ -34,9 +34,18 @@ let hudPixelRatio = 1;
 let hudDirty = true;
 let lastHudSignature = "";
 let lastHudDrawTime = 0;
+let resumeCells = new Set();
+let resumeHover = null; // { viewX, viewY } or null
+
+function placeResume() {
+  const cx = Math.floor(simulation.width / 2);
+  const cy = Math.floor(simulation.height * 0.28);
+  resumeCells = applyResumeStamp(simulation, cx, cy);
+}
 
 function decorateSceneWithPhotos() {
   if (photoStamps.length < 1) {
+    placeResume();
     return;
   }
 
@@ -62,6 +71,7 @@ function decorateSceneWithPhotos() {
     applyPhotoStamp(simulation, stamp, x, y);
   }
 
+  placeResume();
   metrics = simulation.sampleMetrics();
 }
 
@@ -104,7 +114,7 @@ function resizeHudCanvas() {
 
 resizeWorld();
 simulation.seed(state.activeScene);
-decorateSceneWithPhotos();
+placeResume();
 
 function toWorldPoint(event) {
   const rect = canvas.getBoundingClientRect();
@@ -150,6 +160,7 @@ function handlePointerDown(event) {
     callbacks: {
       onElementChange: (species) => {
         state.activeElement = species;
+        state.hudSection = null;
         hudDirty = true;
       },
       onHudSectionToggle: (section) => {
@@ -158,6 +169,7 @@ function handlePointerDown(event) {
       },
       onBrushChange: (size) => {
         state.brushIndex = BRUSH_SIZES.indexOf(size);
+        state.hudSection = null;
         hudDirty = true;
       },
       onSceneChange: (sceneId) => {
@@ -201,7 +213,19 @@ function handlePointerDown(event) {
   });
   lastPoint = toWorldPoint(event);
   if (!handled) {
+    // Check if clicking on a surviving resume cell
+    const clickIndex = simulation.index(lastPoint.x, lastPoint.y);
+    if (resumeCells.has(clickIndex) && simulation.types[clickIndex] === SPECIES.PHOTO) {
+      window.open("/assets/Resume.pdf", "_blank");
+      drawing = false;
+      canvas.setPointerCapture(event.pointerId);
+      return;
+    }
     drawing = true;
+    if (state.hudSection) {
+      state.hudSection = null;
+      hudDirty = true;
+    }
     paintStroke(lastPoint, lastPoint);
   } else {
     drawing = false;
@@ -211,6 +235,14 @@ function handlePointerDown(event) {
 
 function handlePointerMove(event) {
   if (!drawing) {
+    const pt = toWorldPoint(event);
+    const idx = simulation.index(pt.x, pt.y);
+    const onResume = resumeCells.has(idx) && simulation.types[idx] === SPECIES.PHOTO;
+    canvas.style.cursor = onResume ? "pointer" : "";
+    const rect = canvas.getBoundingClientRect();
+    const prev = resumeHover;
+    resumeHover = onResume ? { viewX: event.clientX - rect.left, viewY: event.clientY - rect.top } : null;
+    if (Boolean(prev) !== Boolean(resumeHover)) hudDirty = true;
     return;
   }
 
@@ -277,11 +309,7 @@ function updateHud(now, fps) {
     selectedPhoto,
   ].join("|");
 
-  if (!hudDirty && signature === lastHudSignature) {
-    return;
-  }
-
-  if (!hudDirty && now - lastHudDrawTime < 125) {
+  if (!hudDirty && signature === lastHudSignature && now - lastHudDrawTime < 50) {
     return;
   }
 
@@ -301,6 +329,7 @@ function updateHud(now, fps) {
       activeScene: state.activeScene,
     },
     pixelRatio: hudPixelRatio,
+    resumeHover,
   });
 }
 

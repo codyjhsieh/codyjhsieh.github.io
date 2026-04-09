@@ -180,7 +180,7 @@ class CanvasRenderer {
       return;
     }
 
-    const { types, data, photoColors, width, height, frame } = this.simulation;
+    const { types, data, photoColors, width, frame } = this.simulation;
     const output = this.output32;
     const stoneBase = TABLES.base[SPECIES.STONE][0];
     const sky = this.sky32;
@@ -190,10 +190,9 @@ class CanvasRenderer {
     const maxX = dirty.maxX;
     const maxY = dirty.maxY;
 
-    for (let i = 0; i < types.length && blackHoles.length < 12; i += 1) {
-      if (types[i] === SPECIES.BLACK_HOLE) {
-        blackHoles.push({ x: i % width, y: (i / width) | 0 });
-      }
+    for (const idx of this.simulation.blackHoleIndices) {
+      if (blackHoles.length >= 12) break;
+      blackHoles.push({ x: idx % width, y: (idx / width) | 0 });
     }
 
     for (let y = minY; y <= maxY; y += 1) {

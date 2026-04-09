@@ -11,6 +11,9 @@ const SPECIES = {
   BLACK_HOLE: 9,
 };
 
+const OIL_NEIGHBORS = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1]];
+const FIRE_NEIGHBORS = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+
 const FIREWORK_ROCKET_BASE = 192;
 const FIREWORK_SHELL_BASE = 128;
 const FIREWORK_SPARK_MASK = 15;
@@ -47,6 +50,7 @@ class SandSimulation {
     this.dirtyMaxX = 0;
     this.dirtyMaxY = 0;
     this.hasDirtyRegion = false;
+    this.blackHoleIndices = new Set();
     this.resize(width, height);
   }
 
@@ -75,6 +79,11 @@ class SandSimulation {
     } else if (current !== SPECIES.EMPTY && type === SPECIES.EMPTY) {
       this.particleCount -= 1;
     }
+    if (type === SPECIES.BLACK_HOLE) {
+      this.blackHoleIndices.add(index);
+    } else if (current === SPECIES.BLACK_HOLE) {
+      this.blackHoleIndices.delete(index);
+    }
     this.types[index] = type;
     this.data[index] = data;
     if (type !== SPECIES.PHOTO) {
@@ -96,6 +105,9 @@ class SandSimulation {
     if (current !== SPECIES.EMPTY) {
       this.particleCount -= 1;
     }
+    if (current === SPECIES.BLACK_HOLE) {
+      this.blackHoleIndices.delete(index);
+    }
     this.types[index] = SPECIES.EMPTY;
     this.data[index] = 0;
     this.photoColors[index] = 0;
@@ -109,6 +121,7 @@ class SandSimulation {
     this.photoColors.fill(0);
     this.locked.fill(0);
     this.particleCount = 0;
+    this.blackHoleIndices.clear();
     this.activateAll();
     this.markDirtyAll();
   }
@@ -147,6 +160,15 @@ class SandSimulation {
       }
     }
 
+    const nextBlackHoleIndices = new Set();
+    for (const idx of this.blackHoleIndices) {
+      const oldX = idx % this.width;
+      const oldY = (idx / this.width) | 0;
+      if (oldX < nextWidth && oldY < nextHeight) {
+        nextBlackHoleIndices.add(oldX + oldY * nextWidth);
+      }
+    }
+
     this.width = nextWidth;
     this.height = nextHeight;
     this.size = nextSize;
@@ -156,6 +178,7 @@ class SandSimulation {
     this.locked = nextLocked;
     this.marks = nextMarks;
     this.particleCount = count;
+    this.blackHoleIndices = nextBlackHoleIndices;
     this.visitToken = 1;
     this.activateAll();
     this.markDirtyAll();
@@ -426,11 +449,23 @@ class SandSimulation {
     this.paintCircle(this.width * 0.54, floorY - 38, 25, SPECIES.WATER);
     this.paintCircle(this.width * 0.82, floorY - 22, 22, SPECIES.SAND);
 
-    this.paintLine(this.width * 0.16, floorY - 28, this.width * 0.16, floorY - 58, 2, SPECIES.WOOD);
-    this.paintLine(this.width * 0.16, floorY - 46, this.width * 0.12, floorY - 36, 1, SPECIES.WOOD);
+    // Left cactus
+    const lx = this.width * 0.16;
+    this.paintLine(lx, floorY - 26, lx, floorY - 58, 3, SPECIES.WOOD);
+    this.paintLine(lx - 6, floorY - 42, lx, floorY - 42, 2, SPECIES.WOOD);
+    this.paintLine(lx - 6, floorY - 42, lx - 6, floorY - 50, 2, SPECIES.WOOD);
+    this.paintLine(lx + 6, floorY - 36, lx, floorY - 36, 2, SPECIES.WOOD);
+    this.paintLine(lx + 6, floorY - 36, lx + 6, floorY - 44, 2, SPECIES.WOOD);
+    this.paintCircle(lx, floorY - 59, 3, SPECIES.WOOD);
 
-    this.paintLine(this.width * 0.8, floorY - 24, this.width * 0.8, floorY - 60, 2, SPECIES.WOOD);
-    this.paintLine(this.width * 0.8, floorY - 48, this.width * 0.76, floorY - 38, 1, SPECIES.WOOD);
+    // Right cactus
+    const rx = this.width * 0.8;
+    this.paintLine(rx, floorY - 24, rx, floorY - 56, 3, SPECIES.WOOD);
+    this.paintLine(rx + 7, floorY - 40, rx, floorY - 40, 2, SPECIES.WOOD);
+    this.paintLine(rx + 7, floorY - 40, rx + 7, floorY - 48, 2, SPECIES.WOOD);
+    this.paintLine(rx - 7, floorY - 34, rx, floorY - 34, 2, SPECIES.WOOD);
+    this.paintLine(rx - 7, floorY - 34, rx - 7, floorY - 42, 2, SPECIES.WOOD);
+    this.paintCircle(rx, floorY - 57, 3, SPECIES.WOOD);
   }
 
   paintWord(text, startX, startY, scale, type) {
@@ -473,6 +508,16 @@ class SandSimulation {
   }
 
   paintCircle(cx, cy, radius, type) {
+    // Fireworks are always a single rocket at the center regardless of brush size
+    if (type === SPECIES.FIREWORK) {
+      const x = cx | 0;
+      const y = cy | 0;
+      if (this.inBounds(x, y)) {
+        this.setCell(this.index(x, y), SPECIES.FIREWORK, this.seedDataFor(SPECIES.FIREWORK, x, y));
+      }
+      return;
+    }
+
     const minX = Math.max(0, Math.floor(cx - radius));
     const maxX = Math.min(this.width - 1, Math.ceil(cx + radius));
     const minY = Math.max(0, Math.floor(cy - radius));
@@ -502,7 +547,7 @@ class SandSimulation {
       return 28 + ((x * 7 + y * 13) % 52);
     }
     if (type === SPECIES.FIREWORK) {
-      return FIREWORK_ROCKET_BASE + 54 + ((x * 5 + y * 9) % 8);
+      return FIREWORK_ROCKET_BASE + 27 + ((x * 5 + y * 9) % 4);
     }
     if (type === SPECIES.BLACK_HOLE) {
       return 96 + ((x * 3 + y * 5) % 32);
@@ -539,7 +584,7 @@ class SandSimulation {
       const maxY = this.activeMaxY;
       this.beginStep();
       for (let y = maxY; y >= minY; y -= 1) {
-        const leftToRight = ((this.frame + y) & 1) === 0;
+        const leftToRight = (this.frame & 1) === 0;
         if (leftToRight) {
           let index = y * this.width + minX;
           for (let x = minX; x <= maxX; x += 1, index += 1) {
@@ -702,7 +747,7 @@ class SandSimulation {
       }
     }
 
-    const start = ((this.frame + x * 7 + y * 11) & 1) === 0 ? -1 : 1;
+    const start = (((x >> 1) * 5 + y * 3) & 1) === 0 ? -1 : 1;
     const dirs = [start, -start];
 
     for (let i = 0; i < dirs.length; i += 1) {
@@ -726,12 +771,37 @@ class SandSimulation {
 
       const sideIndex = this.index(nx, y);
       const side = this.types[sideIndex];
-      if (side === SPECIES.EMPTY || side === SPECIES.FIRE) {
-        if (side === SPECIES.FIRE) {
-          this.setCell(sideIndex, SPECIES.EMPTY, 0);
+      if ((side === SPECIES.EMPTY || side === SPECIES.FIRE) && !this.isMarked(sideIndex)) {
+        // Only spread sideways if the destination could lead to a drop
+        if (y + 1 >= this.height || this.types[this.index(nx, y + 1)] === SPECIES.EMPTY || this.types[this.index(nx, y + 1)] === SPECIES.FIRE) {
+          if (side === SPECIES.FIRE) {
+            this.setCell(sideIndex, SPECIES.EMPTY, 0);
+          }
+          this.moveCell(index, sideIndex);
+          return;
         }
-        this.moveCell(index, sideIndex);
-        return;
+      }
+    }
+
+    // Pressure flow: only for cells in a pile (water above) to equalize height
+    if (y > 0 && this.types[this.index(x, y - 1)] === SPECIES.WATER) {
+      for (let i = 0; i < dirs.length; i += 1) {
+        const dir = dirs[i];
+        for (let reach = 1; reach <= 20; reach += 1) {
+          const nx = x + dir * reach;
+          if (nx < 0 || nx >= this.width) {
+            break;
+          }
+          const farIndex = this.index(nx, y);
+          const t = this.types[farIndex];
+          if (t === SPECIES.EMPTY) {
+            this.moveCell(index, farIndex);
+            return;
+          }
+          if (t !== SPECIES.WATER) {
+            break;
+          }
+        }
       }
     }
 
@@ -739,12 +809,9 @@ class SandSimulation {
   }
 
   updateOil(index, x, y) {
-    const neighbors = [
-      [0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1],
-    ];
-    for (let i = 0; i < neighbors.length; i += 1) {
-      const nx = x + neighbors[i][0];
-      const ny = y + neighbors[i][1];
+    for (let i = 0; i < OIL_NEIGHBORS.length; i += 1) {
+      const nx = x + OIL_NEIGHBORS[i][0];
+      const ny = y + OIL_NEIGHBORS[i][1];
       if (!this.inBounds(nx, ny)) {
         continue;
       }
@@ -767,7 +834,7 @@ class SandSimulation {
       }
     }
 
-    const start = ((this.frame + x * 3 + y * 5) & 1) === 0 ? -1 : 1;
+    const start = (((x >> 1) * 5 + y * 3) & 1) === 0 ? -1 : 1;
     const dirs = [start, -start];
 
     for (let i = 0; i < dirs.length; i += 1) {
@@ -790,9 +857,12 @@ class SandSimulation {
       }
 
       const sideIndex = this.index(nx, y);
-      if (this.types[sideIndex] === SPECIES.EMPTY) {
-        this.moveCell(index, sideIndex);
-        return;
+      const side = this.types[sideIndex];
+      if (side === SPECIES.EMPTY && !this.isMarked(sideIndex)) {
+        if (y + 1 >= this.height || this.types[this.index(nx, y + 1)] === SPECIES.EMPTY) {
+          this.moveCell(index, sideIndex);
+          return;
+        }
       }
     }
 
@@ -810,13 +880,9 @@ class SandSimulation {
     life -= 1;
     this.data[index] = life;
 
-    const neighbors = [
-      [0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1],
-    ];
-
-    for (let i = 0; i < neighbors.length; i += 1) {
-      const nx = x + neighbors[i][0];
-      const ny = y + neighbors[i][1];
+    for (let i = 0; i < FIRE_NEIGHBORS.length; i += 1) {
+      const nx = x + FIRE_NEIGHBORS[i][0];
+      const ny = y + FIRE_NEIGHBORS[i][1];
       if (!this.inBounds(nx, ny)) {
         continue;
       }
@@ -861,36 +927,63 @@ class SandSimulation {
   }
 
   spawnFireworkBurst(x, y, seed, secondary = false) {
-    const spokeCount = secondary ? 4 : 8;
-    const step = secondary ? 2 : 1;
-
-    for (let spoke = 0; spoke < spokeCount; spoke += 1) {
-      const directionIndex = (spoke * step) & 7;
-      const [dx, dy] = FIREWORK_DIRECTIONS[directionIndex];
-      const nx = x + Math.sign(dx);
-      const ny = y + Math.sign(dy);
-      if (!this.inBounds(nx, ny)) {
-        continue;
-      }
-
-      const targetIndex = this.index(nx, ny);
-      const target = this.types[targetIndex];
-      if (target !== SPECIES.EMPTY && target !== SPECIES.WATER) {
-        continue;
-      }
-
-      const life = (secondary ? 10 : 14) + ((seed + spoke * 5) & 1);
-      this.setCell(targetIndex, SPECIES.FIREWORK, this.encodeFireworkSpark(directionIndex, life));
-
-      if (!secondary && (spoke & 3) === 0) {
-        const shellX = x + Math.sign(dx) * 3;
-        const shellY = y + Math.sign(dy) * 3;
-        if (this.inBounds(shellX, shellY)) {
-          const shellIndex = this.index(shellX, shellY);
-          const shellTarget = this.types[shellIndex];
-          if (shellTarget === SPECIES.EMPTY || shellTarget === SPECIES.WATER) {
-            this.setCell(shellIndex, SPECIES.FIREWORK, FIREWORK_SHELL_BASE + 22 + ((seed + spoke) & 7));
+    if (secondary) {
+      // Secondary burst: 8 spokes, 3 sparks each at offsets 1–3
+      for (let spoke = 0; spoke < 8; spoke += 1) {
+        const directionIndex = spoke & 7;
+        const [dx, dy] = FIREWORK_DIRECTIONS[directionIndex];
+        const sgx = Math.sign(dx);
+        const sgy = Math.sign(dy);
+        const life = 13 + ((seed + spoke * 3) & 2);
+        for (let off = 1; off <= 3; off += 1) {
+          const nx = x + sgx * off;
+          const ny = y + sgy * off;
+          if (!this.inBounds(nx, ny)) {
+            continue;
           }
+          const ti = this.index(nx, ny);
+          const t = this.types[ti];
+          if (t !== SPECIES.EMPTY && t !== SPECIES.WATER) {
+            continue;
+          }
+          this.setCell(ti, SPECIES.FIREWORK, this.encodeFireworkSpark(directionIndex, life));
+        }
+      }
+      return;
+    }
+
+    // Primary burst: 8 spokes, 6 sparks each at offsets 1–6
+    for (let spoke = 0; spoke < 8; spoke += 1) {
+      const directionIndex = spoke & 7;
+      const [dx, dy] = FIREWORK_DIRECTIONS[directionIndex];
+      const sgx = Math.sign(dx);
+      const sgy = Math.sign(dy);
+
+      for (let off = 1; off <= 6; off += 1) {
+        const nx = x + sgx * off;
+        const ny = y + sgy * off;
+        if (!this.inBounds(nx, ny)) {
+          continue;
+        }
+        const ti = this.index(nx, ny);
+        const t = this.types[ti];
+        if (t !== SPECIES.EMPTY && t !== SPECIES.WATER) {
+          continue;
+        }
+        this.setCell(ti, SPECIES.FIREWORK, this.encodeFireworkSpark(directionIndex, 15));
+      }
+
+      // Secondary shells at distances 8, 16, and 24 from every spoke
+      for (let shellDist = 8; shellDist <= 24; shellDist += 8) {
+        const shellX = x + sgx * shellDist;
+        const shellY = y + sgy * shellDist;
+        if (!this.inBounds(shellX, shellY)) {
+          continue;
+        }
+        const shellIndex = this.index(shellX, shellY);
+        const shellTarget = this.types[shellIndex];
+        if (shellTarget === SPECIES.EMPTY || shellTarget === SPECIES.WATER) {
+          this.setCell(shellIndex, SPECIES.FIREWORK, FIREWORK_SHELL_BASE + 22 + ((seed + spoke + shellDist) & 7));
         }
       }
     }
@@ -922,6 +1015,10 @@ class SandSimulation {
         }
         this.moveCell(index, targetIndex);
         return targetIndex;
+      }
+      // Ignite flammable materials on contact
+      if (target === SPECIES.WOOD || target === SPECIES.OIL || target === SPECIES.PHOTO) {
+        this.setCell(targetIndex, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, nx, ny));
       }
     }
 
@@ -978,9 +1075,24 @@ class SandSimulation {
     const directionIndex = (state >> 4) & FIREWORK_SPARK_MASK;
     const life = state & FIREWORK_SPARK_MASK;
     if (life <= 1) {
-      this.setCell(index, SPECIES.EMPTY, 0);
+      // Die as fire
+      this.setCell(index, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, x, y));
       this.mark(index);
       return;
+    }
+
+    // Spread fire to flammable neighbors each tick
+    for (let i = 0; i < FIRE_NEIGHBORS.length; i += 1) {
+      const nx = x + FIRE_NEIGHBORS[i][0];
+      const ny = y + FIRE_NEIGHBORS[i][1];
+      if (!this.inBounds(nx, ny)) {
+        continue;
+      }
+      const ni = this.index(nx, ny);
+      const neighbor = this.types[ni];
+      if (neighbor === SPECIES.WOOD || neighbor === SPECIES.OIL || neighbor === SPECIES.PHOTO) {
+        this.setCell(ni, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, nx, ny));
+      }
     }
 
     const decayStep = life > 10 ? 3 : 2;
@@ -997,7 +1109,7 @@ class SandSimulation {
     const nextState = this.encodeFireworkSpark(directionIndex, life - 1);
     if (movedIndex >= 0) {
       if (life <= 3 && ((this.frame + directionIndex + x + y) & 1) === 0) {
-        this.setCell(movedIndex, SPECIES.EMPTY, 0);
+        this.setCell(movedIndex, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, x, y));
         return;
       }
       this.data[movedIndex] = nextState;
@@ -1005,7 +1117,7 @@ class SandSimulation {
     }
 
     if (life <= 3) {
-      this.setCell(index, SPECIES.EMPTY, 0);
+      this.setCell(index, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, x, y));
       this.mark(index);
       return;
     }

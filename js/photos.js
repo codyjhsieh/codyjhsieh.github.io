@@ -106,4 +106,80 @@ function applyPhotoStamp(simulation, photoStamp, centerX, centerY) {
   }
 }
 
-export { applyPhotoStamp, loadPhotoStamps };
+function createResumeStamp() {
+  const w = 40;
+  const h = 52;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  // Paper background
+  ctx.fillStyle = "#f5efe6";
+  ctx.fillRect(0, 0, w, h);
+
+  // Folded corner
+  ctx.fillStyle = "#e0d8cc";
+  ctx.beginPath();
+  ctx.moveTo(w - 8, 0);
+  ctx.lineTo(w, 8);
+  ctx.lineTo(w - 8, 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Simulated text lines
+  ctx.fillStyle = "#9a8e7e";
+  for (let line = 0; line < 10; line++) {
+    const ly = 12 + line * 4;
+    const lw = line === 0 ? 18 : line === 1 ? 14 : 6 + Math.random() * 22;
+    ctx.fillRect(4, ly, Math.min(lw, w - 8), 2);
+  }
+
+  // "RESUME" label
+  ctx.fillStyle = "#6b5e4f";
+  ctx.font = "bold 6px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("RESUME", w / 2, 8);
+
+  // Border
+  ctx.strokeStyle = "#c8bfb0";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+
+  const { data } = ctx.getImageData(0, 0, w, h);
+  const pixels = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (x + y * w) * 4;
+      if (data[i + 3] < 72) continue;
+      pixels.push({
+        x,
+        y,
+        species: SPECIES.PHOTO,
+        color: packColor(data[i], data[i + 1], data[i + 2], 255),
+      });
+    }
+  }
+
+  return { size: Math.max(w, h), width: w, height: h, pixels };
+}
+
+function applyResumeStamp(simulation, centerX, centerY) {
+  const stamp = createResumeStamp();
+  const halfW = Math.floor(stamp.width / 2);
+  const halfH = Math.floor(stamp.height / 2);
+  const indices = new Set();
+
+  for (const pixel of stamp.pixels) {
+    const x = centerX + pixel.x - halfW;
+    const y = centerY + pixel.y - halfH;
+    if (x < 0 || x >= simulation.width || y < 0 || y >= simulation.height) continue;
+    const index = simulation.index(x, y);
+    simulation.setPhotoCell(index, pixel.color);
+    indices.add(index);
+  }
+
+  return indices;
+}
+
+export { applyPhotoStamp, applyResumeStamp, loadPhotoStamps };

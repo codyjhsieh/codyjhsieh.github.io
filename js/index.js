@@ -34,6 +34,9 @@ const playfield = document.getElementById("playfield");
 const canvas = document.getElementById("sand-canvas");
 const hudCanvas = document.getElementById("hud-canvas");
 const loadingOverlay = document.getElementById("loading-overlay");
+const tiltPermissionPanel = document.getElementById("tilt-permission");
+const tiltAllowButton = document.getElementById("tilt-allow");
+const tiltCancelButton = document.getElementById("tilt-cancel");
 const simulation = new SandSimulation(MIN_WORLD_WIDTH, MIN_WORLD_HEIGHT);
 const renderer = new CanvasRenderer({ canvas, simulation });
 const hudCtx = hudCanvas.getContext("2d");
@@ -302,7 +305,39 @@ function stopTiltListeners() {
   window.removeEventListener("deviceorientation", handleDeviceOrientation);
 }
 
-async function requestSensorPermission(eventConstructor) {
+function getSensorPermissionConstructor() {
+  if (typeof window.DeviceMotionEvent?.requestPermission === "function") {
+    return window.DeviceMotionEvent;
+  }
+  if (typeof window.DeviceOrientationEvent?.requestPermission === "function") {
+    return window.DeviceOrientationEvent;
+  }
+  return null;
+}
+
+function needsSensorPermissionRequest() {
+  return Boolean(getSensorPermissionConstructor());
+}
+
+function showTiltPermissionPrompt() {
+  if (!tiltPermissionPanel) {
+    enablePhoneTilt({ fromPrompt: true });
+    return;
+  }
+  tiltPermissionPanel.classList.remove("is-hidden");
+  tiltPermissionPanel.setAttribute("aria-hidden", "false");
+  tiltAllowButton?.focus();
+}
+
+function hideTiltPermissionPrompt() {
+  if (!tiltPermissionPanel) {
+    return;
+  }
+  tiltPermissionPanel.classList.add("is-hidden");
+  tiltPermissionPanel.setAttribute("aria-hidden", "true");
+}
+
+async function requestSensorPermission(eventConstructor = getSensorPermissionConstructor()) {
   const requestPermission = eventConstructor?.requestPermission;
   if (typeof requestPermission !== "function") {
     return "granted";
@@ -310,7 +345,7 @@ async function requestSensorPermission(eventConstructor) {
   return requestPermission.call(eventConstructor);
 }
 
-function enablePhoneTilt() {
+function enablePhoneTilt({ fromPrompt = false } = {}) {
   if (!state.tiltAvailable) {
     showToast("Tilt is not available in this browser.");
     return;
@@ -326,14 +361,15 @@ function enablePhoneTilt() {
     startTiltListeners();
     return;
   }
+  if (!fromPrompt && needsSensorPermissionRequest()) {
+    showTiltPermissionPrompt();
+    return;
+  }
 
   tiltPermissionPending = true;
-  Promise.all([
-    requestSensorPermission(window.DeviceMotionEvent),
-    requestSensorPermission(window.DeviceOrientationEvent),
-  ])
-    .then((permissionStates) => {
-      if (permissionStates.every((permissionState) => permissionState === "granted")) {
+  requestSensorPermission()
+    .then((permissionState) => {
+      if (permissionState === "granted") {
         tiltPermissionGranted = true;
         startTiltListeners();
       } else {
@@ -508,6 +544,14 @@ canvas.addEventListener("pointercancel", handlePointerUp);
 canvas.addEventListener("pointerleave", () => {
   drawing = false;
   lastPoint = null;
+});
+tiltAllowButton?.addEventListener("click", () => {
+  hideTiltPermissionPrompt();
+  enablePhoneTilt({ fromPrompt: true });
+});
+tiltCancelButton?.addEventListener("click", () => {
+  hideTiltPermissionPrompt();
+  showToast("Tilt permission was not granted.");
 });
 window.addEventListener("resize", () => {
   resizeWorld();

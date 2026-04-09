@@ -37,9 +37,6 @@ let lastHudSignature = "";
 let lastHudDrawTime = 0;
 let resumeCells = new Set();
 let resumeHover = null; // { viewX, viewY } or null
-let resumeTapArmedAt = 0;
-let resumeTapTimer = 0;
-const RESUME_TAP_ARM_MS = 2600;
 
 function placeResume() {
   const cx = Math.floor(simulation.width / 2);
@@ -222,36 +219,6 @@ function handlePointerDown(event) {
     // Check if clicking on a surviving resume cell
     const clickIndex = simulation.index(lastPoint.x, lastPoint.y);
     if (resumeCells.has(clickIndex) && simulation.types[clickIndex] === SPECIES.PHOTO) {
-      if (event.pointerType !== "mouse") {
-        const now = performance.now();
-        const rect = canvas.getBoundingClientRect();
-        const armed = now - resumeTapArmedAt <= RESUME_TAP_ARM_MS;
-        if (!armed) {
-          resumeTapArmedAt = now;
-          resumeHover = {
-            viewX: event.clientX - rect.left,
-            viewY: event.clientY - rect.top,
-            text: "Tap again to view resume",
-          };
-          hudDirty = true;
-          if (resumeTapTimer) {
-            window.clearTimeout(resumeTapTimer);
-          }
-          resumeTapTimer = window.setTimeout(() => {
-            resumeTapArmedAt = 0;
-            resumeHover = null;
-            hudDirty = true;
-          }, RESUME_TAP_ARM_MS);
-          drawing = false;
-          canvas.setPointerCapture(event.pointerId);
-          return;
-        }
-      }
-      if (resumeTapTimer) {
-        window.clearTimeout(resumeTapTimer);
-        resumeTapTimer = 0;
-      }
-      resumeTapArmedAt = 0;
       resumeHover = null;
       hudDirty = true;
       window.open("/assets/Resume.pdf", "_blank");
@@ -259,7 +226,6 @@ function handlePointerDown(event) {
       canvas.setPointerCapture(event.pointerId);
       return;
     }
-    resumeTapArmedAt = 0;
     drawing = true;
     if (state.hudSection) {
       state.hudSection = null;
@@ -267,7 +233,6 @@ function handlePointerDown(event) {
     }
     paintStroke(lastPoint, lastPoint);
   } else {
-    resumeTapArmedAt = 0;
     drawing = false;
   }
   canvas.setPointerCapture(event.pointerId);

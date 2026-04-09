@@ -89,6 +89,34 @@ async function loadPhotoStamps() {
   return stamps;
 }
 
+async function loadInitialPhotoStamps(count = 5) {
+  const sources = PHOTO_SOURCES.slice(0, Math.max(0, count));
+  const stamps = [];
+
+  for (const src of sources) {
+    try {
+      const stamp = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.decoding = "async";
+        image.onload = () => {
+          resolve({
+            src,
+            label: labelFromSource(src),
+            stamp: createPhotoStamp(image),
+          });
+        };
+        image.onerror = reject;
+        image.src = src;
+      });
+      stamps.push(stamp);
+    } catch (error) {
+      console.warn("Failed to load initial photo:", src, error);
+    }
+  }
+
+  return stamps;
+}
+
 function applyPhotoStamp(simulation, photoStamp, centerX, centerY) {
   if (!photoStamp) {
     return;
@@ -182,4 +210,4 @@ function applyResumeStamp(simulation, centerX, centerY) {
   return indices;
 }
 
-export { applyPhotoStamp, applyResumeStamp, loadPhotoStamps };
+export { applyPhotoStamp, applyResumeStamp, loadInitialPhotoStamps, loadPhotoStamps };

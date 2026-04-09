@@ -1,6 +1,6 @@
 import "./styles.css";
 
-import { applyPhotoStamp, applyResumeStamp, loadPhotoStamps } from "./photos";
+import { applyPhotoStamp, applyResumeStamp, loadInitialPhotoStamps, loadPhotoStamps } from "./photos";
 import { CanvasRenderer } from "./render";
 import { BRUSH_SIZES, createAppState } from "./state";
 import { SandSimulation, SPECIES } from "./simulation";
@@ -28,6 +28,7 @@ let frameCursor = 0;
 let frameCount = 0;
 let metrics = { particles: 0 };
 let photoStamps = [];
+let photosDecorated = false;
 let hudViewportWidth = 1;
 let hudViewportHeight = 1;
 let hudPixelRatio = 1;
@@ -51,6 +52,8 @@ function decorateSceneWithPhotos() {
     placeResume();
     return;
   }
+
+  photosDecorated = true;
 
   const count = Math.min(5, photoStamps.length);
   const used = new Set();
@@ -392,11 +395,25 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-loadPhotoStamps()
+loadInitialPhotoStamps()
   .then((stamps) => {
+    if (stamps.length && !photosDecorated) {
+      photoStamps = stamps;
+      simulation.seed(state.activeScene);
+      decorateSceneWithPhotos();
+      hudDirty = true;
+    }
+    return loadPhotoStamps();
+  })
+  .then((stamps) => {
+    if (!stamps) {
+      return;
+    }
     photoStamps = stamps;
-    simulation.seed(state.activeScene);
-    decorateSceneWithPhotos();
+    if (!photosDecorated && stamps.length) {
+      simulation.seed(state.activeScene);
+      decorateSceneWithPhotos();
+    }
     hudDirty = true;
   })
   .catch((error) => {

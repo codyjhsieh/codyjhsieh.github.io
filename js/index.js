@@ -13,6 +13,13 @@ const MAX_TICKS_PER_FRAME = 1;
 const MIN_TICKS_PER_FRAME = 1;
 const RESUME_STAMP_WIDTH = 40;
 const RESUME_STAMP_HEIGHT = 52;
+const PHOTO_DISPLAY_SLOTS = [
+  { x: 0.12, y: 0.42 },
+  { x: 0.32, y: 0.29 },
+  { x: 0.5, y: 0.46, resume: true },
+  { x: 0.68, y: 0.31 },
+  { x: 0.88, y: 0.43 },
+];
 
 const state = createAppState();
 const playfield = document.getElementById("playfield");
@@ -43,9 +50,9 @@ let resumeHover = null; // { viewX, viewY } or null
 let resumeHitBounds = null;
 let appReady = false;
 
-function placeResume() {
-  const cx = Math.floor(simulation.width / 2);
-  const cy = Math.floor(simulation.height * 0.46);
+function placeResume(slot = PHOTO_DISPLAY_SLOTS.find((item) => item.resume)) {
+  const cx = Math.floor(simulation.width * (slot?.x ?? 0.5));
+  const cy = Math.floor(simulation.height * (slot?.y ?? 0.46));
   resumeCells = applyResumeStamp(simulation, cx, cy);
   const hitPadding = Math.max(8, Math.round(Math.min(simulation.width, simulation.height) * 0.025));
   resumeHitBounds = {
@@ -64,15 +71,9 @@ function decorateSceneWithPhotos() {
 
   photosDecorated = true;
 
-  const count = Math.min(5, photoStamps.length);
+  const photoSlots = PHOTO_DISPLAY_SLOTS.filter((slot) => !slot.resume);
+  const count = Math.min(photoSlots.length, photoStamps.length);
   const used = new Set();
-  const slots = [
-    { x: 0.13, y: 0.42 },
-    { x: 0.33, y: 0.29 },
-    { x: 0.52, y: 0.46 },
-    { x: 0.71, y: 0.31 },
-    { x: 0.89, y: 0.43 },
-  ];
 
   for (let i = 0; i < count; i += 1) {
     let choice = ((Math.random() * photoStamps.length) | 0);
@@ -84,7 +85,7 @@ function decorateSceneWithPhotos() {
     used.add(choice);
 
     const stamp = photoStamps[choice];
-    const slot = slots[i];
+    const slot = photoSlots[i];
     const jitterX = ((Math.random() * 10) | 0) - 5;
     const jitterY = ((Math.random() * 8) | 0) - 4;
     const x = Math.floor(simulation.width * slot.x + jitterX);

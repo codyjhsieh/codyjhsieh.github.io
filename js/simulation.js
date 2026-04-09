@@ -21,6 +21,7 @@ const FIREWORK_DIRECTIONS = [
   [0, -3], [2, -2], [3, 0], [2, 2],
   [0, 3], [-2, 2], [-3, 0], [-2, -2],
 ];
+const SEEDED_WATER_RADIUS_SCALE = Math.sqrt(0.7);
 
 class SandSimulation {
   constructor(width, height) {
@@ -407,13 +408,14 @@ class SandSimulation {
     const codyWidth = 26 * codyScale;
     const codyX = Math.max(6, Math.floor((this.width - codyWidth) * 0.5));
     const codyY = Math.max(8, Math.min(18, Math.floor(this.height * 0.05)));
+    const waterRadius = (radius) => Math.max(1, radius * SEEDED_WATER_RADIUS_SCALE);
     this.paintLine(0, floorY, this.width - 1, floorY, 6, SPECIES.STONE);
     this.paintWord("CODY", codyX, codyY, codyScale, SPECIES.STONE);
 
     if (sceneId === "fountain") {
       this.paintLine(18, floorY - 22, this.width - 18, floorY - 22, 5, SPECIES.STONE);
-      this.paintCircle(this.width * 0.5, floorY - 42, 9, SPECIES.WATER);
-      this.paintCircle(this.width * 0.5, floorY - 58, 7, SPECIES.WATER);
+      this.paintCircle(this.width * 0.5, floorY - 42, waterRadius(9), SPECIES.WATER);
+      this.paintCircle(this.width * 0.5, floorY - 58, waterRadius(7), SPECIES.WATER);
       this.paintCircle(this.width * 0.25, floorY - 18, 11, SPECIES.SAND);
       this.paintCircle(this.width * 0.75, floorY - 18, 11, SPECIES.SAND);
       return;
@@ -434,8 +436,8 @@ class SandSimulation {
       this.paintCircle(this.width * 0.2, floorY - 12, 14, SPECIES.SAND);
       this.paintCircle(this.width * 0.5, floorY - 20, 16, SPECIES.STONE);
       this.paintCircle(this.width * 0.8, floorY - 12, 14, SPECIES.SAND);
-      this.paintCircle(this.width * 0.33, floorY - 42, 12, SPECIES.WATER);
-      this.paintCircle(this.width * 0.67, floorY - 42, 12, SPECIES.WATER);
+      this.paintCircle(this.width * 0.33, floorY - 42, waterRadius(12), SPECIES.WATER);
+      this.paintCircle(this.width * 0.67, floorY - 42, waterRadius(12), SPECIES.WATER);
       this.paintCircle(this.width * 0.5, floorY - 56, 10, SPECIES.OIL);
       return;
     }
@@ -446,7 +448,7 @@ class SandSimulation {
     this.paintLine(this.width * 0.72, floorY - 92, this.width * 1.0, floorY - 98, 5, SPECIES.STONE);
 
     this.paintCircle(this.width * 0.22, floorY - 22, 24, SPECIES.SAND);
-    this.paintCircle(this.width * 0.54, floorY - 38, 25, SPECIES.WATER);
+    this.paintCircle(this.width * 0.54, floorY - 38, waterRadius(25), SPECIES.WATER);
     this.paintCircle(this.width * 0.82, floorY - 22, 22, SPECIES.SAND);
 
     // Left cactus

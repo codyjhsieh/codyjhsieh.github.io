@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - sand-game-reboot
   workflow_dispatch:
 
 permissions:

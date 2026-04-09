@@ -288,32 +288,43 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
   function drawGlowBox(x, y, w, h, r) {
     // Background
     ctx.save();
-    ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetY = 6;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.38)";
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 8;
     roundRect(ctx, x, y, w, h, r);
-    ctx.fillStyle = "rgba(10, 12, 18, 0.7)";
+    ctx.fillStyle = "rgba(10, 12, 18, 0.74)";
     ctx.fill();
     ctx.restore();
 
     // Layered ambient glow — multiple passes radiating outward
     const layers = [
-      { blur: 90 + t * 30, opacity: 0.35, width: 10 },
-      { blur: 55 + t * 15, opacity: 0.45, width: 7 },
-      { blur: 30 + t2 * 10, opacity: 0.5, width: 4 },
-      { blur: 12 + t2 * 4, opacity: 0.4, width: 2 },
-      { blur: 4, opacity: 0.15, width: 1 },
+      { blur: 132 + t * 42, opacity: 0.5, width: compact ? 18 : 16, stroke: 0.1 },
+      { blur: 86 + t * 24, opacity: 0.58, width: compact ? 14 : 12, stroke: 0.14 },
+      { blur: 48 + t2 * 16, opacity: 0.62, width: compact ? 9 : 8, stroke: 0.18 },
+      { blur: 20 + t2 * 7, opacity: 0.56, width: compact ? 5 : 4, stroke: 0.26 },
+      { blur: 6, opacity: 0.35, width: 2, stroke: 0.42 },
     ];
     for (const layer of layers) {
       ctx.save();
       ctx.shadowColor = `rgba(${gr}, ${gg}, ${gb}, ${layer.opacity.toFixed(2)})`;
       ctx.shadowBlur = layer.blur;
       roundRect(ctx, x, y, w, h, r);
-      ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, 0.06)`;
+      ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, ${layer.stroke.toFixed(2)})`;
       ctx.lineWidth = layer.width;
       ctx.stroke();
       ctx.restore();
     }
+
+    ctx.save();
+    roundRect(ctx, x + 1.5, y + 1.5, w - 3, h - 3, r);
+    ctx.strokeStyle = `rgba(255, 244, 220, ${(0.2 + pulse * 0.08).toFixed(2)})`;
+    ctx.lineWidth = compact ? 2.5 : 2;
+    ctx.stroke();
+    roundRect(ctx, x + 4.5, y + 4.5, w - 9, h - 9, Math.max(4, r - 4));
+    ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, ${(0.24 + pulse * 0.1).toFixed(2)})`;
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+    ctx.restore();
   }
 
   // Panels
@@ -341,9 +352,9 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
 
     roundRect(ctx, button.x + 0.5, button.y + 0.5, button.width - 1, button.height - 1, btnR);
     ctx.strokeStyle = isSelected
-      ? `rgba(255, 210, 122, ${(0.3 + pulse * 0.15).toFixed(2)})`
-      : "rgba(255, 255, 255, 0.05)";
-    ctx.lineWidth = 0.5;
+      ? `rgba(255, 210, 122, ${(0.58 + pulse * 0.22).toFixed(2)})`
+      : "rgba(255, 255, 255, 0.12)";
+    ctx.lineWidth = isSelected ? 1.6 : 1;
     ctx.stroke();
 
     ctx.save();

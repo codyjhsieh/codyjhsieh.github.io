@@ -31,10 +31,10 @@ function runTest(name, fn) {
   }
 }
 
-runTest("black hole brush paints one anchor regardless of brush radius", () => {
+runTest("black hole brush paints a filled singularity area", () => {
   const simulation = new SandSimulation(80, 80);
   simulation.paintCircle(40, 40, 18, SPECIES.BLACK_HOLE);
-  assert.equal(countType(simulation, SPECIES.BLACK_HOLE), 1);
+  assert.ok(countType(simulation, SPECIES.BLACK_HOLE) > 1);
 });
 
 runTest("black hole consumes and pulls nearby matter", () => {

@@ -26,8 +26,7 @@ const BLACK_HOLE_RADIUS = 44;
 const BLACK_HOLE_CORE_RADIUS_SQ = 9;
 
 function buildBlackHoleOffsets() {
-  const core = [];
-  const pull = [];
+  const offsets = [];
   const radiusSq = BLACK_HOLE_RADIUS * BLACK_HOLE_RADIUS;
 
   for (let dy = -BLACK_HOLE_RADIUS; dy <= BLACK_HOLE_RADIUS; dy += 1) {
@@ -41,28 +40,29 @@ function buildBlackHoleOffsets() {
         continue;
       }
 
-      if (distSq <= BLACK_HOLE_CORE_RADIUS_SQ) {
-        core.push({ dx, dy, distSq });
-        continue;
-      }
-
       const distanceBand = Math.max(1, Math.ceil(Math.sqrt(distSq)));
       const normalized = distanceBand / BLACK_HOLE_RADIUS;
-      pull.push({
+      const inwardX = dx === 0 ? 0 : -Math.sign(dx);
+      const inwardY = dy === 0 ? 0 : -Math.sign(dy);
+      const tangentX = dy === 0 ? 0 : Math.sign(dy);
+      const tangentY = dx === 0 ? 0 : -Math.sign(dx);
+
+      offsets.push({
         dx,
         dy,
+        distSq,
         distanceBand,
         cadence: Math.max(4, Math.floor(6 + normalized * normalized * 24)),
-        inwardX: dx === 0 ? 0 : -Math.sign(dx),
-        inwardY: dy === 0 ? 0 : -Math.sign(dy),
-        tangentX: dy === 0 ? 0 : Math.sign(dy),
-        tangentY: dx === 0 ? 0 : -Math.sign(dx),
+        inwardX,
+        inwardY,
+        tangentX,
+        tangentY,
         inwardBias: normalized < 0.28 ? 4 : normalized < 0.62 ? 2 : 1,
       });
     }
   }
 
-  return { core, pull };
+  return offsets;
 }
 
 const BLACK_HOLE_OFFSETS = buildBlackHoleOffsets();
@@ -563,8 +563,8 @@ class SandSimulation {
   }
 
   paintCircle(cx, cy, radius, type) {
-    // Fireworks and black holes are single anchors at the center regardless of brush size.
-    if (type === SPECIES.FIREWORK || type === SPECIES.BLACK_HOLE) {
+    // Fireworks are single anchors at the center regardless of brush size.
+    if (type === SPECIES.FIREWORK) {
       const x = cx | 0;
       const y = cy | 0;
       if (this.inBounds(x, y)) {
@@ -1208,8 +1208,8 @@ class SandSimulation {
     let consumed = 0;
     const phase = this.data[index] & 7;
 
-    for (let i = 0; i < BLACK_HOLE_OFFSETS.core.length; i += 1) {
-      const offset = BLACK_HOLE_OFFSETS.core[i];
+    for (let i = 0; i < BLACK_HOLE_OFFSETS.length; i += 1) {
+      const offset = BLACK_HOLE_OFFSETS[i];
       const nx = x + offset.dx;
       const ny = y + offset.dy;
       if (!this.inBounds(nx, ny)) {
@@ -1222,23 +1222,11 @@ class SandSimulation {
         continue;
       }
 
-      if (((this.frame + phase + nx * 7 + ny * 11 + offset.distSq) % 10) === 0) {
-        this.forceClearCell(targetIndex);
-        consumed += 1;
-      }
-    }
-
-    for (let i = 0; i < BLACK_HOLE_OFFSETS.pull.length; i += 1) {
-      const offset = BLACK_HOLE_OFFSETS.pull[i];
-      const nx = x + offset.dx;
-      const ny = y + offset.dy;
-      if (!this.inBounds(nx, ny)) {
-        continue;
-      }
-
-      const targetIndex = this.index(nx, ny);
-      const target = this.types[targetIndex];
-      if (target === SPECIES.EMPTY || target === SPECIES.BLACK_HOLE) {
+      if (offset.distSq <= BLACK_HOLE_CORE_RADIUS_SQ) {
+        if (((this.frame + phase + nx * 7 + ny * 11 + offset.distSq) % 10) === 0) {
+          this.forceClearCell(targetIndex);
+          consumed += 1;
+        }
         continue;
       }
 
@@ -1247,15 +1235,21 @@ class SandSimulation {
       }
 
       const swirlFirst = ((this.frame + phase + offset.distanceBand) % (offset.inwardBias + 1)) !== 0;
-      const firstX = swirlFirst ? offset.tangentX : offset.inwardX;
-      const firstY = swirlFirst ? offset.tangentY : offset.inwardY;
-      const thirdX = swirlFirst ? offset.inwardX : offset.tangentX;
-      const thirdY = swirlFirst ? offset.inwardY : offset.tangentY;
+      if (swirlFirst) {
+        if (
+          this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX, ny + offset.tangentY) ||
+          this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX + offset.inwardX, ny + offset.tangentY + offset.inwardY) ||
+          this.tryMoveBlackHoleTarget(targetIndex, nx + offset.inwardX, ny + offset.inwardY)
+        ) {
+          consumed += 1;
+        }
+        continue;
+      }
 
       if (
-        this.tryMoveBlackHoleTarget(targetIndex, nx + firstX, ny + firstY) ||
+        this.tryMoveBlackHoleTarget(targetIndex, nx + offset.inwardX, ny + offset.inwardY) ||
         this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX + offset.inwardX, ny + offset.tangentY + offset.inwardY) ||
-        this.tryMoveBlackHoleTarget(targetIndex, nx + thirdX, ny + thirdY)
+        this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX, ny + offset.tangentY)
       ) {
         consumed += 1;
       }

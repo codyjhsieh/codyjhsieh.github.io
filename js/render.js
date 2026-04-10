@@ -186,7 +186,7 @@ function fireworkColor(state, frame) {
   } else {
     const directionIndex = (state >> 4) & 7;
     life = state & 15;
-    base = life > 9 ? FIREWORK_ORANGE : FIREWORK_PALETTE[(directionIndex + 2 + (life <= 5 ? 3 : 0)) & 7];
+    base = life > 6 ? FIREWORK_ORANGE : FIREWORK_PALETTE[(directionIndex + 2 + (life <= 3 ? 3 : 0)) & 7];
     intensity = 0.82 + (life / 15) * 0.42;
   }
 

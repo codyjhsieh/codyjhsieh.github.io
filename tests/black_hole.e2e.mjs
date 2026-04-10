@@ -37,6 +37,24 @@ runTest("black hole brush paints one anchor regardless of brush radius", () => {
   assert.equal(countType(simulation, SPECIES.BLACK_HOLE), 1);
 });
 
+runTest("idle black hole does not keep the field active", () => {
+  const simulation = new SandSimulation(96, 96);
+  simulation.setCell(simulation.index(48, 48), SPECIES.BLACK_HOLE, 0);
+  simulation.tick(1);
+  assert.equal(simulation.hasActiveRegion, false);
+});
+
+runTest("nearby particles wake an idle black hole", () => {
+  const simulation = new SandSimulation(96, 96);
+  simulation.setCell(simulation.index(48, 48), SPECIES.BLACK_HOLE, 0);
+  simulation.tick(1);
+  assert.equal(simulation.hasActiveRegion, false);
+
+  simulation.setCell(simulation.index(72, 48), SPECIES.SAND, 0);
+  simulation.tick(1);
+  assert.equal(simulation.hasActiveRegion, true);
+});
+
 runTest("black hole consumes and pulls nearby matter", () => {
   const simulation = new SandSimulation(96, 96);
   simulation.setCell(simulation.index(48, 48), SPECIES.BLACK_HOLE, 0);

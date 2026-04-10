@@ -20,16 +20,12 @@ function noise2d(x, y) {
   return value & 255;
 }
 
-const DEFAULT_SKY_PALETTE = {
-  top: [255, 253, 248],
-  horizon: [243, 247, 242],
-  lower: [221, 233, 232],
-  sun: [255, 250, 236],
-};
-
-function buildSky(width, height, palette = DEFAULT_SKY_PALETTE) {
+function buildSky(width, height) {
   const sky = new Uint32Array(width * height);
-  const { top, horizon, lower, sun } = palette;
+  const top = [255, 253, 248];
+  const horizon = [243, 247, 242];
+  const lower = [221, 233, 232];
+  const sun = [255, 250, 236];
   const sunX = width * 0.54;
   const sunY = height * 0.16;
   const sunRadius = Math.max(width, height) * 0.42;
@@ -150,6 +146,18 @@ function buildTables() {
 const TABLES = buildTables();
 const BLACK_HOLE_HALO_RADIUS = 44;
 const BLACK_HOLE_HALO_RADIUS_SQ = BLACK_HOLE_HALO_RADIUS * BLACK_HOLE_HALO_RADIUS;
+const FIREWORK_ROCKET_BASE = 192;
+const FIREWORK_SHELL_BASE = 128;
+const FIREWORK_PALETTE = [
+  [255, 226, 128],
+  [124, 216, 255],
+  [255, 126, 185],
+  [151, 240, 151],
+  [255, 139, 104],
+  [178, 157, 255],
+  [255, 245, 181],
+  [120, 239, 213],
+];
 
 function tintToward(packed, tintR, tintG, tintB, strength) {
   const r = packed & 255;
@@ -162,27 +170,49 @@ function tintToward(packed, tintR, tintG, tintB, strength) {
   );
 }
 
+function fireworkColor(state, frame) {
+  let colorIndex = 0;
+  let life = 15;
+  let intensity = 1;
+
+  if (state >= FIREWORK_ROCKET_BASE) {
+    colorIndex = 0;
+    intensity = 1;
+  } else if (state >= FIREWORK_SHELL_BASE) {
+    const timer = state - FIREWORK_SHELL_BASE;
+    colorIndex = (timer + (timer >> 2)) & 7;
+    intensity = 0.58 + (((frame + timer) & 3) * 0.08);
+  } else {
+    const directionIndex = (state >> 4) & 7;
+    life = state & 15;
+    colorIndex = (directionIndex + (life <= 9 ? 2 : 0) + (life <= 5 ? 3 : 0)) & 7;
+    intensity = 0.35 + (life / 15) * 0.72;
+  }
+
+  const base = FIREWORK_PALETTE[colorIndex];
+  const shimmer = (((frame + state * 3) & 7) - 3) * 7;
+  const whiteHot = state >= FIREWORK_ROCKET_BASE || life > 11 ? 0.32 : life > 7 ? 0.16 : 0.04;
+  return packColor(
+    clamp(mixChannel(base[0] * intensity + shimmer, 255, whiteHot)),
+    clamp(mixChannel(base[1] * intensity + shimmer, 248, whiteHot)),
+    clamp(mixChannel(base[2] * intensity + shimmer, 218, whiteHot)),
+  );
+}
+
 class CanvasRenderer {
   constructor({ canvas, simulation }) {
     this.canvas = canvas;
     this.simulation = simulation;
     this.ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
-    this.skyPalette = DEFAULT_SKY_PALETTE;
     this.resize();
   }
 
   resize() {
     this.imageData = this.ctx.createImageData(this.simulation.width, this.simulation.height);
     this.output32 = new Uint32Array(this.imageData.data.buffer);
-    this.sky32 = buildSky(this.simulation.width, this.simulation.height, this.skyPalette);
+    this.sky32 = buildSky(this.simulation.width, this.simulation.height);
     this.canvas.width = this.simulation.width;
     this.canvas.height = this.simulation.height;
-  }
-
-  setSkyPalette(palette) {
-    this.skyPalette = palette;
-    this.sky32 = buildSky(this.simulation.width, this.simulation.height, this.skyPalette);
-    this.simulation.markDirtyAll();
   }
 
   render() {
@@ -240,6 +270,11 @@ class CanvasRenderer {
 
         if (species === SPECIES.PHOTO) {
           output[index] = photoColors[index] || stoneBase;
+          continue;
+        }
+
+        if (species === SPECIES.FIREWORK) {
+          output[index] = fireworkColor(data[index], frame);
           continue;
         }
 

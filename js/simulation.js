@@ -24,6 +24,7 @@ const FIREWORK_DIRECTIONS = [
 const SEEDED_WATER_RADIUS_SCALE = Math.sqrt(0.7);
 const BLACK_HOLE_RADIUS = 44;
 const BLACK_HOLE_CORE_RADIUS_SQ = 9;
+const BLACK_HOLE_WAKE_PADDING = 3;
 
 function buildBlackHoleOffsets() {
   const core = [];
@@ -344,12 +345,57 @@ class SandSimulation {
     const bounds = this.boundsFromIndex(index, radius);
     this.activateRect(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
     this.markDirtyRect(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+    this.wakeNearbyBlackHoles(index, radius, true);
   }
 
   queueCellActivity(index, radius = 1) {
     const bounds = this.boundsFromIndex(index, radius);
     this.queueActiveRect(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
     this.markDirtyRect(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+    this.wakeNearbyBlackHoles(index, radius, false);
+  }
+
+  wakeNearbyBlackHoles(index, radius = 0, immediate = false) {
+    if (this.blackHoleIndices.size === 0) {
+      return;
+    }
+
+    const x = index % this.width;
+    const y = (index / this.width) | 0;
+    const wakeRadius = BLACK_HOLE_RADIUS + radius + BLACK_HOLE_WAKE_PADDING;
+    const wakeRadiusSq = wakeRadius * wakeRadius;
+
+    for (const blackHoleIndex of this.blackHoleIndices) {
+      if (blackHoleIndex === index) {
+        continue;
+      }
+
+      const bx = blackHoleIndex % this.width;
+      const by = (blackHoleIndex / this.width) | 0;
+      const dx = x - bx;
+      const dy = y - by;
+      if (dx * dx + dy * dy > wakeRadiusSq) {
+        continue;
+      }
+
+      if (immediate) {
+        this.activateRect(bx, by, bx, by);
+      } else {
+        this.queueActiveRect(bx, by, bx, by);
+      }
+    }
+  }
+
+  queueBlackHoleActivity(index) {
+    const x = index % this.width;
+    const y = (index / this.width) | 0;
+    this.queueActiveRect(x, y, x, y);
+    this.markDirtyRect(
+      x - BLACK_HOLE_RADIUS,
+      y - BLACK_HOLE_RADIUS,
+      x + BLACK_HOLE_RADIUS,
+      y + BLACK_HOLE_RADIUS,
+    );
   }
 
   activateAll() {
@@ -1157,8 +1203,7 @@ class SandSimulation {
     const directionIndex = (state >> 4) & FIREWORK_SPARK_MASK;
     const life = state & FIREWORK_SPARK_MASK;
     if (life <= 1) {
-      // Die as fire
-      this.setCell(index, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, x, y));
+      this.setCell(index, SPECIES.EMPTY, 0);
       this.mark(index);
       return;
     }
@@ -1190,16 +1235,12 @@ class SandSimulation {
     const movedIndex = this.moveFireworkParticle(index, x, y, moveX, moveY);
     const nextState = this.encodeFireworkSpark(directionIndex, life - 1);
     if (movedIndex >= 0) {
-      if (life <= 3 && ((this.frame + directionIndex + x + y) & 1) === 0) {
-        this.setCell(movedIndex, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, x, y));
-        return;
-      }
       this.data[movedIndex] = nextState;
       return;
     }
 
     if (life <= 3) {
-      this.setCell(index, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, x, y));
+      this.setCell(index, SPECIES.EMPTY, 0);
       this.mark(index);
       return;
     }
@@ -1211,6 +1252,7 @@ class SandSimulation {
 
   updateBlackHole(index, x, y) {
     let consumed = 0;
+    let touched = false;
     const phase = this.data[index] & 7;
 
     for (let i = 0; i < BLACK_HOLE_OFFSETS.core.length; i += 1) {
@@ -1226,6 +1268,7 @@ class SandSimulation {
       if (target === SPECIES.EMPTY || target === SPECIES.BLACK_HOLE) {
         continue;
       }
+      touched = true;
 
       if (((this.frame + phase + nx * 7 + ny * 11 + offset.distSq) % 10) === 0) {
         this.forceClearCell(targetIndex);
@@ -1246,6 +1289,7 @@ class SandSimulation {
       if (target === SPECIES.EMPTY || target === SPECIES.BLACK_HOLE) {
         continue;
       }
+      touched = true;
 
       if (((this.frame + phase + nx * 3 + ny * 5) % offset.cadence) !== 0) {
         continue;
@@ -1266,8 +1310,10 @@ class SandSimulation {
       }
     }
 
-    this.data[index] = 96 + ((phase + consumed + 1) & 31);
-    this.queueCellActivity(index, BLACK_HOLE_RADIUS);
+    if (touched) {
+      this.data[index] = 96 + ((phase + consumed + 1) & 31);
+      this.queueBlackHoleActivity(index);
+    }
     this.mark(index);
   }
 

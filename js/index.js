@@ -5,7 +5,6 @@ import { CanvasRenderer } from "./render";
 import { isVisibleResumePixel } from "./resumePixels";
 import { BRUSH_SIZES, createAppState } from "./state";
 import { SandSimulation, SPECIES } from "./simulation";
-import { applyTimeTheme, getCurrentTimeTheme, getTimeThemePreviewSequence } from "./timeTheme";
 import { drawHud, handleHudPointer } from "./ui";
 
 const CELL_SIZE = 4;
@@ -24,6 +23,8 @@ const TILT_SMOOTHING = 0.18;
 const TILT_DEAD_ZONE = 0.055;
 const TILT_SENSOR_TIMEOUT_MS = 1800;
 const TOAST_DURATION_MS = 3200;
+const MOBILE_PHOTO_SCALE = 0.7;
+const MOBILE_PHOTO_QUERY = "(max-width: 700px)";
 
 const state = createAppState();
 state.tiltAvailable = Boolean(
@@ -40,9 +41,6 @@ const tiltCancelButton = document.getElementById("tilt-cancel");
 const simulation = new SandSimulation(MIN_WORLD_WIDTH, MIN_WORLD_HEIGHT);
 const renderer = new CanvasRenderer({ canvas, simulation });
 const hudCtx = hudCanvas.getContext("2d");
-let activeTimeTheme = getCurrentTimeTheme();
-applyTimeTheme(activeTimeTheme);
-renderer.setSkyPalette(activeTimeTheme.sky);
 
 let drawing = false;
 let lastPoint = null;
@@ -71,30 +69,6 @@ let lastTiltDataAt = 0;
 let tiltSensorTimer = null;
 let toastMessage = "";
 let toastExpiresAt = 0;
-const themePreviewSequence = new URLSearchParams(window.location.search).has("themePreview")
-  ? getTimeThemePreviewSequence()
-  : null;
-let themePreviewIndex = 0;
-let nextThemePreviewAt = performance.now() + 2000;
-
-function updateTimeTheme() {
-  let nextTheme = getCurrentTimeTheme();
-  if (themePreviewSequence) {
-    const now = performance.now();
-    if (now >= nextThemePreviewAt) {
-      themePreviewIndex = (themePreviewIndex + 1) % themePreviewSequence.length;
-      nextThemePreviewAt = now + 2000;
-    }
-    nextTheme = themePreviewSequence[themePreviewIndex];
-  }
-  if (nextTheme.id === activeTimeTheme.id) {
-    return;
-  }
-  activeTimeTheme = nextTheme;
-  applyTimeTheme(activeTimeTheme);
-  renderer.setSkyPalette(activeTimeTheme.sky);
-  hudDirty = true;
-}
 
 function showToast(message, duration = TOAST_DURATION_MS) {
   toastMessage = message;
@@ -113,6 +87,10 @@ function getActiveToast(now) {
     return null;
   }
   return { message: toastMessage };
+}
+
+function getPhotoStampScale() {
+  return window.matchMedia(MOBILE_PHOTO_QUERY).matches ? MOBILE_PHOTO_SCALE : 1;
 }
 
 function placeResume(slot = PHOTO_DISPLAY_SLOTS.find((item) => item.resume)) {
@@ -148,7 +126,7 @@ function decorateSceneWithPhotos() {
     const jitterY = ((Math.random() * 8) | 0) - 4;
     const x = Math.floor(simulation.width * slot.x + jitterX);
     const y = Math.floor(simulation.height * slot.y + jitterY);
-    applyPhotoStamp(simulation, stamp, x, y);
+    applyPhotoStamp(simulation, stamp, x, y, getPhotoStampScale());
   }
 
   simulation.applyScene(state.activeScene);
@@ -207,7 +185,7 @@ function toWorldPoint(event) {
 function paintStroke(from, to) {
   if (state.activeElement === SPECIES.PHOTO) {
     const active = photoStamps[state.photoIndex];
-    applyPhotoStamp(simulation, active, to.x, to.y);
+    applyPhotoStamp(simulation, active, to.x, to.y, getPhotoStampScale());
     return;
   }
 
@@ -640,7 +618,6 @@ function getTickBudget(fps) {
 }
 
 function frame(now) {
-  updateTimeTheme();
   const fps = sampleFps(now);
   const tickBudget = getTickBudget(fps);
   if (tickBudget > 0) {

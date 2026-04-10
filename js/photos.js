@@ -36,22 +36,26 @@ async function loadPhotoStamps() {
   return photoStampCache;
 }
 
-function applyPhotoStamp(simulation, photoStamp, centerX, centerY) {
+function applyPhotoStamp(simulation, photoStamp, centerX, centerY, scale = 1) {
   if (!photoStamp) {
     return;
   }
 
   const { stamp } = photoStamp;
-  const half = Math.floor(stamp.size / 2);
+  const stampScale = Math.max(0.1, scale);
+  const scaledSize = Math.max(1, Math.round(stamp.size * stampScale));
+  const half = Math.floor(scaledSize / 2);
 
   if (stamp.colors) {
-    for (let sy = 0; sy < stamp.size; sy += 1) {
+    for (let sy = 0; sy < scaledSize; sy += 1) {
       const y = centerY + sy - half;
       if (y < 0 || y >= simulation.height) {
         continue;
       }
-      for (let sx = 0; sx < stamp.size; sx += 1) {
-        const color = stamp.colors[sx + sy * stamp.size];
+      const sourceY = Math.min(stamp.size - 1, Math.floor(sy / stampScale));
+      for (let sx = 0; sx < scaledSize; sx += 1) {
+        const sourceX = Math.min(stamp.size - 1, Math.floor(sx / stampScale));
+        const color = stamp.colors[sourceX + sourceY * stamp.size];
         if (!color) {
           continue;
         }

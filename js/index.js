@@ -23,8 +23,6 @@ const TILT_SMOOTHING = 0.18;
 const TILT_DEAD_ZONE = 0.055;
 const TILT_SENSOR_TIMEOUT_MS = 1800;
 const TOAST_DURATION_MS = 3200;
-const MOBILE_PHOTO_SCALE = 0.7;
-const MOBILE_PHOTO_QUERY = "(max-width: 700px)";
 
 const state = createAppState();
 state.tiltAvailable = Boolean(
@@ -89,10 +87,6 @@ function getActiveToast(now) {
   return { message: toastMessage };
 }
 
-function getPhotoStampScale() {
-  return window.matchMedia(MOBILE_PHOTO_QUERY).matches ? MOBILE_PHOTO_SCALE : 1;
-}
-
 function placeResume(slot = PHOTO_DISPLAY_SLOTS.find((item) => item.resume)) {
   const cx = Math.floor(simulation.width * (slot?.x ?? 0.5));
   const cy = Math.floor(simulation.height * (slot?.y ?? 0.46));
@@ -126,7 +120,7 @@ function decorateSceneWithPhotos() {
     const jitterY = ((Math.random() * 8) | 0) - 4;
     const x = Math.floor(simulation.width * slot.x + jitterX);
     const y = Math.floor(simulation.height * slot.y + jitterY);
-    applyPhotoStamp(simulation, stamp, x, y, getPhotoStampScale());
+    applyPhotoStamp(simulation, stamp, x, y);
   }
 
   simulation.applyScene(state.activeScene);
@@ -185,7 +179,7 @@ function toWorldPoint(event) {
 function paintStroke(from, to) {
   if (state.activeElement === SPECIES.PHOTO) {
     const active = photoStamps[state.photoIndex];
-    applyPhotoStamp(simulation, active, to.x, to.y, getPhotoStampScale());
+    applyPhotoStamp(simulation, active, to.x, to.y);
     return;
   }
 

@@ -148,15 +148,16 @@ const BLACK_HOLE_HALO_RADIUS = 44;
 const BLACK_HOLE_HALO_RADIUS_SQ = BLACK_HOLE_HALO_RADIUS * BLACK_HOLE_HALO_RADIUS;
 const FIREWORK_ROCKET_BASE = 192;
 const FIREWORK_SHELL_BASE = 128;
+const FIREWORK_ORANGE = [238, 188, 110];
 const FIREWORK_PALETTE = [
-  [255, 226, 128],
-  [124, 216, 255],
-  [255, 126, 185],
-  [151, 240, 151],
-  [255, 139, 104],
-  [178, 157, 255],
-  [255, 245, 181],
-  [120, 239, 213],
+  [255, 240, 72],
+  [0, 210, 255],
+  [255, 46, 166],
+  [45, 255, 86],
+  [255, 80, 34],
+  [154, 84, 255],
+  [255, 255, 255],
+  [0, 255, 214],
 ];
 
 function tintToward(packed, tintR, tintG, tintB, strength) {
@@ -171,27 +172,26 @@ function tintToward(packed, tintR, tintG, tintB, strength) {
 }
 
 function fireworkColor(state, frame) {
-  let colorIndex = 0;
+  let base = FIREWORK_ORANGE;
   let life = 15;
-  let intensity = 1;
+  let intensity = 1.18;
 
   if (state >= FIREWORK_ROCKET_BASE) {
-    colorIndex = 0;
-    intensity = 1;
+    base = FIREWORK_ORANGE;
+    intensity = 1.22;
   } else if (state >= FIREWORK_SHELL_BASE) {
     const timer = state - FIREWORK_SHELL_BASE;
-    colorIndex = (timer + (timer >> 2)) & 7;
-    intensity = 0.58 + (((frame + timer) & 3) * 0.08);
+    base = FIREWORK_PALETTE[(timer + (timer >> 2)) & 7];
+    intensity = 1.08 + (((frame + timer) & 3) * 0.05);
   } else {
     const directionIndex = (state >> 4) & 7;
     life = state & 15;
-    colorIndex = (directionIndex + (life <= 9 ? 2 : 0) + (life <= 5 ? 3 : 0)) & 7;
-    intensity = 0.35 + (life / 15) * 0.72;
+    base = life > 9 ? FIREWORK_ORANGE : FIREWORK_PALETTE[(directionIndex + 2 + (life <= 5 ? 3 : 0)) & 7];
+    intensity = 0.82 + (life / 15) * 0.42;
   }
 
-  const base = FIREWORK_PALETTE[colorIndex];
-  const shimmer = (((frame + state * 3) & 7) - 3) * 7;
-  const whiteHot = state >= FIREWORK_ROCKET_BASE || life > 11 ? 0.32 : life > 7 ? 0.16 : 0.04;
+  const shimmer = (((frame + state * 3) & 7) - 3) * 9;
+  const whiteHot = state >= FIREWORK_ROCKET_BASE || life > 11 ? 0.2 : life > 7 ? 0.08 : 0;
   return packColor(
     clamp(mixChannel(base[0] * intensity + shimmer, 255, whiteHot)),
     clamp(mixChannel(base[1] * intensity + shimmer, 248, whiteHot)),

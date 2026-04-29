@@ -7,7 +7,7 @@
     "build": "webpack --mode=production",
     "dev": "webpack serve --host 0.0.0.0 --mode=development",
     "start": "npm run dev",
-    "test": "node tests/fireworks.e2e.mjs && npm run build"
+    "test": "node tests/fireworks.e2e.mjs && node tests/black_hole.e2e.mjs && node tests/birds_black_hole.e2e.mjs && npm run build"
   },
   "engines": {
     "node": ">=16"

@@ -1,24 +1,33 @@
 import "./styles.css";
 
-import { applyPhotoStamp, applyResumeStamp, loadPhotoStamps } from "./photos";
-import { CanvasRenderer } from "./render";
-import { isVisibleResumePixel } from "./resumePixels";
-import { BRUSH_SIZES, createAppState } from "./state";
-import { SandSimulation, SPECIES } from "./simulation";
-import { drawHud, handleHudPointer } from "./ui";
+import { applyPhotoStamp, applyResumeStamp, collectPhotoStampCells, loadPhotoStamps } from "./photos.js";
+import { CanvasRenderer } from "./render.js";
+import { isVisibleResumePixel } from "./resumePixels.js";
+import { BRUSH_SIZES, createAppState } from "./state.js";
+import { SandSimulation, SPECIES } from "./simulation.js";
+import { drawHud, handleHudPointer } from "./ui.js";
 
 const CELL_SIZE = 4;
 const MIN_WORLD_WIDTH = 120;
 const MIN_WORLD_HEIGHT = 120;
 const MAX_TICKS_PER_FRAME = 1;
 const MIN_TICKS_PER_FRAME = 1;
-const PHOTO_DISPLAY_SLOTS = [
+const PHOTO_DISPLAY_SLOTS_DESKTOP = [
   { x: 0.12, y: 0.42 },
   { x: 0.32, y: 0.29 },
   { x: 0.5, y: 0.46, resume: true },
   { x: 0.68, y: 0.31 },
   { x: 0.88, y: 0.43 },
 ];
+const PHOTO_DISPLAY_SLOTS_MOBILE = [
+  { x: 0.24, y: 0.35 },
+  { x: 0.5, y: 0.46, resume: true },
+  { x: 0.76, y: 0.35 },
+];
+const PHOTO_ROTATE_INTERVAL_MS = 5000;
+const PHOTO_FADE_DURATION_MS = 900;
+const PHOTO_SOLID_OPACITY = 0.8;
+const MOBILE_MEDIA_QUERY = "(max-width: 720px)";
 const TILT_SMOOTHING = 0.18;
 const TILT_DEAD_ZONE = 0.055;
 const TILT_SENSOR_TIMEOUT_MS = 1800;
@@ -48,7 +57,6 @@ let frameCursor = 0;
 let frameCount = 0;
 let metrics = { particles: 0 };
 let photoStamps = [];
-let photosDecorated = false;
 let hudViewportWidth = 1;
 let hudViewportHeight = 1;
 let hudPixelRatio = 1;
@@ -67,6 +75,11 @@ let lastTiltDataAt = 0;
 let tiltSensorTimer = null;
 let toastMessage = "";
 let toastExpiresAt = 0;
+let decorativePhotoSlots = [];
+let decorativePhotoBag = [];
+let decorativePhotoSeen = new Set();
+let decorativePhotoTransition = "idle";
+let decorativePhotoPhaseStartedAt = 0;
 
 function showToast(message, duration = TOAST_DURATION_MS) {
   toastMessage = message;
@@ -87,43 +100,280 @@ function getActiveToast(now) {
   return { message: toastMessage };
 }
 
-function placeResume(slot = PHOTO_DISPLAY_SLOTS.find((item) => item.resume)) {
+function getPhotoDisplaySlots() {
+  return window.matchMedia(MOBILE_MEDIA_QUERY).matches
+    ? PHOTO_DISPLAY_SLOTS_MOBILE
+    : PHOTO_DISPLAY_SLOTS_DESKTOP;
+}
+
+function getPhotoOnlySlots() {
+  return getPhotoDisplaySlots().filter((slot) => !slot.resume);
+}
+
+function getResumeSlot() {
+  return getPhotoDisplaySlots().find((slot) => slot.resume);
+}
+
+function shuffle(items) {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = (Math.random() * (i + 1)) | 0;
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
+function refillDecorativePhotoBag(excluded = []) {
+  const excludedSet = new Set(excluded);
+  decorativePhotoBag = shuffle(
+    photoStamps
+      .map((_, index) => index)
+      .filter((index) => !excludedSet.has(index) && !decorativePhotoSeen.has(index)),
+  );
+}
+
+function takeNextDecorativePhotoIndices(count, excluded = []) {
+  if (photoStamps.length === 0 || count <= 0) {
+    return [];
+  }
+
+  const excludedSet = new Set(excluded);
+  const picked = [];
+  while (picked.length < count) {
+    if (decorativePhotoBag.length === 0) {
+      refillDecorativePhotoBag([...excludedSet, ...picked]);
+      if (decorativePhotoBag.length === 0) {
+        decorativePhotoSeen = new Set(excludedSet);
+        refillDecorativePhotoBag(picked);
+      }
+      if (decorativePhotoBag.length === 0) {
+        break;
+      }
+    }
+
+    const nextIndex = decorativePhotoBag.shift();
+    if (excludedSet.has(nextIndex) || picked.includes(nextIndex)) {
+      continue;
+    }
+    picked.push(nextIndex);
+    decorativePhotoSeen.add(nextIndex);
+  }
+
+  return picked;
+}
+
+function createDecorativePhotoSlot(slot, photoIndex) {
+  return {
+    slot,
+    photoIndex,
+    opacity: 1,
+    jitterX: ((Math.random() * 10) | 0) - 5,
+    jitterY: ((Math.random() * 8) | 0) - 4,
+    materializedCells: [],
+  };
+}
+
+function getDecorativePhotoCenter(entry) {
+  return {
+    x: Math.floor(simulation.width * entry.slot.x + entry.jitterX),
+    y: Math.floor(simulation.height * entry.slot.y + entry.jitterY),
+  };
+}
+
+function clearDecorativePhotoMaterial(entry) {
+  if (!entry?.materializedCells?.length) {
+    return;
+  }
+  for (let i = 0; i < entry.materializedCells.length; i += 1) {
+    const { index, color } = entry.materializedCells[i];
+    if (simulation.types[index] !== SPECIES.PHOTO || simulation.photoColors[index] !== color) {
+      continue;
+    }
+    simulation.setCell(index, SPECIES.EMPTY, 0);
+  }
+  entry.materializedCells = [];
+}
+
+function clearAllDecorativePhotoMaterial() {
+  for (let i = 0; i < decorativePhotoSlots.length; i += 1) {
+    clearDecorativePhotoMaterial(decorativePhotoSlots[i]);
+  }
+}
+
+function materializeDecorativePhoto(entry) {
+  if (entry.photoIndex == null) {
+    return;
+  }
+  const photoStamp = photoStamps[entry.photoIndex];
+  if (!photoStamp) {
+    return;
+  }
+  const center = getDecorativePhotoCenter(entry);
+  const ignitionSources = [];
+  const cells = collectPhotoStampCells(simulation, photoStamp, center.x, center.y)
+    .filter(({ index }) => {
+      const type = simulation.types[index];
+      if (type === SPECIES.FIRE || type === SPECIES.FIREWORK) {
+        ignitionSources.push(index);
+      }
+      return (
+        !isVisibleResumePixel(simulation, index) &&
+        type !== SPECIES.STONE &&
+        type !== SPECIES.BLACK_HOLE &&
+        type !== SPECIES.FIRE &&
+        type !== SPECIES.FIREWORK
+      );
+    });
+  for (let i = 0; i < cells.length; i += 1) {
+    simulation.setPhotoCell(cells[i].index, cells[i].color);
+  }
+  for (let i = 0; i < ignitionSources.length; i += 1) {
+    const index = ignitionSources[i];
+    const x = index % simulation.width;
+    const y = (index / simulation.width) | 0;
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        if (dx === 0 && dy === 0) {
+          continue;
+        }
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!simulation.inBounds(nx, ny)) {
+          continue;
+        }
+        const neighborIndex = simulation.index(nx, ny);
+        if (simulation.types[neighborIndex] === SPECIES.PHOTO) {
+          simulation.setCell(neighborIndex, SPECIES.FIRE, simulation.seedDataFor(SPECIES.FIRE, nx, ny));
+        }
+      }
+    }
+  }
+  if (simulation.inBounds(center.x, center.y)) {
+    simulation.noteCellChange(simulation.index(center.x, center.y), 48);
+  }
+  entry.materializedCells = cells;
+}
+
+function syncDecorativePhotoMaterial() {
+  for (let i = 0; i < decorativePhotoSlots.length; i += 1) {
+    const entry = decorativePhotoSlots[i];
+    const shouldMaterialize = entry.photoIndex != null && entry.opacity > 0;
+    const isMaterialized = entry.materializedCells.length > 0;
+    if (shouldMaterialize && !isMaterialized) {
+      materializeDecorativePhoto(entry);
+      continue;
+    }
+    if (!shouldMaterialize && isMaterialized) {
+      clearDecorativePhotoMaterial(entry);
+    }
+  }
+}
+
+function syncDecorativePhotoOverlay() {
+  syncDecorativePhotoMaterial();
+  const renderPhotos = decorativePhotoSlots
+    .filter((entry) => entry.photoIndex != null && entry.opacity > 0)
+    .map((entry) => ({
+      cells: entry.materializedCells,
+      liveCells: true,
+      x: getDecorativePhotoCenter(entry).x,
+      y: getDecorativePhotoCenter(entry).y,
+      opacity: entry.opacity,
+    }));
+  renderer.setDecorativePhotos(renderPhotos);
+}
+
+function resetDecorativePhotos(now = performance.now()) {
+  const slots = getPhotoOnlySlots();
+  const count = Math.min(slots.length, photoStamps.length);
+  clearAllDecorativePhotoMaterial();
+  decorativePhotoSlots = [];
+  decorativePhotoSeen = new Set();
+  decorativePhotoTransition = "idle";
+  decorativePhotoPhaseStartedAt = now;
+  refillDecorativePhotoBag();
+  const indices = takeNextDecorativePhotoIndices(count);
+  for (let i = 0; i < count; i += 1) {
+    decorativePhotoSlots.push(createDecorativePhotoSlot(slots[i], indices[i]));
+  }
+  syncDecorativePhotoOverlay();
+}
+
+function syncDecorativePhotoLayout() {
+  const slots = getPhotoOnlySlots();
+  const count = Math.min(slots.length, photoStamps.length);
+  const layoutChanged = decorativePhotoSlots.length !== count;
+  if (layoutChanged) {
+    resetDecorativePhotos();
+    return;
+  }
+
+  clearAllDecorativePhotoMaterial();
+  for (let i = 0; i < decorativePhotoSlots.length; i += 1) {
+    decorativePhotoSlots[i].slot = slots[i];
+  }
+  syncDecorativePhotoOverlay();
+}
+
+function updateDecorativePhotos(now) {
+  if (decorativePhotoSlots.length === 0) {
+    return;
+  }
+
+  if (decorativePhotoTransition === "idle") {
+    if (now - decorativePhotoPhaseStartedAt < PHOTO_ROTATE_INTERVAL_MS) {
+      return;
+    }
+    decorativePhotoTransition = "fade-out";
+    decorativePhotoPhaseStartedAt = now;
+  }
+
+  const progress = Math.min(1, (now - decorativePhotoPhaseStartedAt) / PHOTO_FADE_DURATION_MS);
+  if (decorativePhotoTransition === "fade-out") {
+    for (let i = 0; i < decorativePhotoSlots.length; i += 1) {
+      decorativePhotoSlots[i].opacity = 1 - progress;
+    }
+    syncDecorativePhotoOverlay();
+    if (progress >= 1) {
+      const currentIndices = decorativePhotoSlots.map((slot) => slot.photoIndex);
+      const nextIndices = takeNextDecorativePhotoIndices(decorativePhotoSlots.length, currentIndices);
+      for (let i = 0; i < decorativePhotoSlots.length; i += 1) {
+        decorativePhotoSlots[i].photoIndex = nextIndices[i] ?? decorativePhotoSlots[i].photoIndex;
+        decorativePhotoSlots[i].jitterX = ((Math.random() * 10) | 0) - 5;
+        decorativePhotoSlots[i].jitterY = ((Math.random() * 8) | 0) - 4;
+        decorativePhotoSlots[i].opacity = 0;
+      }
+      decorativePhotoTransition = "fade-in";
+      decorativePhotoPhaseStartedAt = now;
+      syncDecorativePhotoOverlay();
+    }
+    return;
+  }
+
+  if (decorativePhotoTransition === "fade-in") {
+    for (let i = 0; i < decorativePhotoSlots.length; i += 1) {
+      decorativePhotoSlots[i].opacity = progress;
+    }
+    syncDecorativePhotoOverlay();
+    if (progress >= 1) {
+      for (let i = 0; i < decorativePhotoSlots.length; i += 1) {
+        decorativePhotoSlots[i].opacity = 1;
+      }
+      decorativePhotoTransition = "idle";
+      decorativePhotoPhaseStartedAt = now;
+      syncDecorativePhotoOverlay();
+    }
+  }
+}
+
+function placeResume(slot = getResumeSlot()) {
   const cx = Math.floor(simulation.width * (slot?.x ?? 0.5));
   const cy = Math.floor(simulation.height * (slot?.y ?? 0.46));
   applyResumeStamp(simulation, cx, cy);
 }
 
 function decorateSceneWithPhotos() {
-  if (photoStamps.length < 1) {
-    placeResume();
-    return;
-  }
-
-  photosDecorated = true;
-
-  const photoSlots = PHOTO_DISPLAY_SLOTS.filter((slot) => !slot.resume);
-  const count = Math.min(photoSlots.length, photoStamps.length);
-  const used = new Set();
-
-  for (let i = 0; i < count; i += 1) {
-    let choice = ((Math.random() * photoStamps.length) | 0);
-    let attempts = 0;
-    while (used.has(choice) && attempts < photoStamps.length) {
-      choice = (choice + 1) % photoStamps.length;
-      attempts += 1;
-    }
-    used.add(choice);
-
-    const stamp = photoStamps[choice];
-    const slot = photoSlots[i];
-    const jitterX = ((Math.random() * 10) | 0) - 5;
-    const jitterY = ((Math.random() * 8) | 0) - 4;
-    const x = Math.floor(simulation.width * slot.x + jitterX);
-    const y = Math.floor(simulation.height * slot.y + jitterY);
-    applyPhotoStamp(simulation, stamp, x, y);
-  }
-
-  simulation.applyScene(state.activeScene);
+  resetDecorativePhotos();
   placeResume();
   metrics = simulation.sampleMetrics();
 }
@@ -141,14 +391,17 @@ function resizeWorld({ reseed = false } = {}) {
   const changed = next.width !== simulation.width || next.height !== simulation.height;
   if (!changed) {
     resizeHudCanvas();
+    syncDecorativePhotoLayout();
     return;
   }
+  clearAllDecorativePhotoMaterial();
   simulation.resize(next.width, next.height);
   renderer.resize();
   resizeHudCanvas();
   if (reseed) {
     simulation.seed(state.activeScene);
   }
+  syncDecorativePhotoLayout();
   metrics = simulation.sampleMetrics();
 }
 
@@ -473,11 +726,11 @@ function handlePointerDown(event) {
       canvas.setPointerCapture(event.pointerId);
       return;
     }
-    drawing = true;
     if (state.hudSection) {
       state.hudSection = null;
       hudDirty = true;
     }
+    drawing = true;
     paintStroke(lastPoint, lastPoint);
   } else {
     drawing = false;
@@ -619,6 +872,7 @@ function frame(now) {
     metrics = simulation.sampleMetrics();
   }
 
+  updateDecorativePhotos(now);
   renderer.render();
   updateHud(now, fps);
 
@@ -654,6 +908,7 @@ boot().catch((error) => {
   console.error("Failed to boot sand lab:", error);
   resizeWorld();
   simulation.seed(state.activeScene);
+  renderer.setDecorativePhotos([]);
   placeResume();
   metrics = simulation.sampleMetrics();
   appReady = true;

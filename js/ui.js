@@ -1,5 +1,5 @@
-import { SPECIES } from "./simulation";
-import { BRUSH_SIZES, ELEMENTS, SCENES } from "./state";
+import { SPECIES } from "./simulation.js";
+import { BRUSH_SIZES, ELEMENTS, SCENES } from "./state.js";
 
 const viewportLayoutCache = {
   key: "",
@@ -21,6 +21,12 @@ function truncateLabel(label, maxChars) {
     return label.slice(0, 1);
   }
   return `${label.slice(0, Math.max(1, maxChars - 1))}\u2026`;
+}
+
+function fitButtonLabel(label, width, compact, padding = 12) {
+  const approxCharWidth = compact ? 7.2 : 6.6;
+  const maxChars = Math.max(3, Math.floor((width - padding) / approxCharWidth));
+  return truncateLabel(label, maxChars);
 }
 
 function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
@@ -47,7 +53,7 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
   const sideMargin = compact ? 10 : 18;
   const dockWidth = compact ? Math.max(280, Math.min(viewWidth - sideMargin * 2, 342)) : 286;
   const dockHeight = compact ? (photoToolActive ? 142 : 98) : (photoToolActive ? 68 : 40);
-  const panelWidth = compact ? Math.max(280, Math.min(viewWidth - sideMargin * 2, 360)) : 320;
+  const panelWidth = compact ? Math.max(312, Math.min(viewWidth - sideMargin * 2, 360)) : 372;
   const dockX = compact ? Math.round((viewWidth - dockWidth) * 0.5) : viewWidth - dockWidth - 18;
   const dockY = viewHeight - dockHeight - (compact ? 10 : 18);
   const panelX = compact ? Math.round((viewWidth - panelWidth) * 0.5) : viewWidth - panelWidth - 18;
@@ -66,14 +72,22 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
   const toolLabel = getLabelForElement(state.activeElement);
   if (compact) {
     const rowWidth = dock.width - inset * 2;
-    const topLeftWidth = Math.floor((rowWidth - buttonGap) * 0.62);
+    const topLeftWidth = Math.floor((rowWidth - buttonGap) * 0.68);
     const topRightWidth = rowWidth - buttonGap - topLeftWidth;
     const tiltButtonWidth = buttonHeight;
     const bottomWidth = Math.floor((rowWidth - tiltButtonWidth - buttonGap * 2) / 2);
     const bottomY = dock.y + 54;
     const photoY = dock.y + 98;
 
-    addButton(dock.x + inset, dock.y + 10, topLeftWidth, buttonHeight, toolLabel, { type: "toggle-section", value: "tools" }, state.hudSection === "tools");
+    addButton(
+      dock.x + inset,
+      dock.y + 10,
+      topLeftWidth,
+      buttonHeight,
+      toolLabel,
+      { type: "toggle-section", value: "tools" },
+      state.hudSection === "tools",
+    );
     addButton(dock.x + inset + topLeftWidth + buttonGap, dock.y + 10, topRightWidth, buttonHeight, state.paused ? "RESUME" : "PAUSE", { type: "pause" }, state.paused);
     addButton(dock.x + inset, bottomY, bottomWidth, buttonHeight, "WORLD", { type: "toggle-section", value: "world" }, state.hudSection === "world");
     addButton(dock.x + inset + bottomWidth + buttonGap, bottomY, bottomWidth, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
@@ -102,7 +116,15 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     const pauseButtonWidth = Math.floor(available * 0.28);
     const sectionButtonWidth = Math.floor((available - toolButtonWidth - pauseButtonWidth) / 2);
     let cx = dock.x + inset;
-    addButton(cx, dock.y + 11, toolButtonWidth, buttonHeight, toolLabel, { type: "toggle-section", value: "tools" }, state.hudSection === "tools");
+    addButton(
+      cx,
+      dock.y + 11,
+      toolButtonWidth,
+      buttonHeight,
+      toolLabel,
+      { type: "toggle-section", value: "tools" },
+      state.hudSection === "tools",
+    );
     cx += toolButtonWidth + buttonGap;
     addButton(cx, dock.y + 11, sectionButtonWidth, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
     cx += sectionButtonWidth + buttonGap;
@@ -130,10 +152,10 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     };
 
     if (state.hudSection === "tools") {
-      const columns = compact ? 3 : 4;
-      const rowHeight = compact ? 42 : 26;
+      const columns = compact ? 2 : 3;
+      const rowHeight = compact ? 42 : 30;
       const rows = Math.ceil(ELEMENTS.length / columns);
-      panel.height = compact ? 46 + rows * rowHeight + 54 : 38 + rows * rowHeight + 42;
+      panel.height = compact ? 46 + rows * rowHeight + 54 : 40 + rows * rowHeight + 44;
       panel.y = Math.max(8, panel.y - panel.height);
       panels.push(panel);
 
@@ -146,7 +168,7 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
           panel.y + (compact ? 30 : 24) + row * rowHeight,
           buttonWidth,
           buttonHeight,
-          element.label,
+          element.label.toUpperCase(),
           { type: "element", value: element.species },
           state.activeElement === element.species,
         );

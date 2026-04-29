@@ -1,6 +1,6 @@
-import { SPECIES } from "./simulation";
-import { PHOTO_STAMP_DATA } from "./photoStamps.generated";
-import { markResumePixel } from "./resumePixels";
+import { SPECIES } from "./simulation.js";
+import { PHOTO_STAMP_DATA } from "./photoStamps.generated.js";
+import { markResumePixel } from "./resumePixels.js";
 
 let photoStampCache = null;
 
@@ -10,7 +10,9 @@ function packColor(r, g, b, a = 255) {
 
 function decodePhotoStamp(data) {
   const rgb = atob(data.rgb);
-  const colors = new Uint32Array(data.size * data.size);
+  const width = data.width ?? data.size;
+  const height = data.height ?? data.size;
+  const colors = new Uint32Array(width * height);
   for (let index = 0; index < colors.length; index += 1) {
     const offset = index * 3;
     colors[index] = packColor(
@@ -21,7 +23,7 @@ function decodePhotoStamp(data) {
     );
   }
 
-  return { size: data.size, colors };
+  return { size: Math.max(width, height), width, height, colors };
 }
 
 async function loadPhotoStamps() {
@@ -36,45 +38,60 @@ async function loadPhotoStamps() {
   return photoStampCache;
 }
 
-function applyPhotoStamp(simulation, photoStamp, centerX, centerY) {
-  if (!photoStamp) {
+function forEachPhotoStampCell(simulation, photoStamp, centerX, centerY, visitor) {
+  if (!photoStamp || typeof visitor !== "function") {
     return;
   }
 
   const { stamp } = photoStamp;
-  const half = Math.floor(stamp.size / 2);
+  const width = stamp.width ?? stamp.size;
+  const height = stamp.height ?? stamp.size;
+  const halfW = Math.floor(width / 2);
+  const halfH = Math.floor(height / 2);
 
   if (stamp.colors) {
-    for (let sy = 0; sy < stamp.size; sy += 1) {
-      const y = centerY + sy - half;
+    for (let sy = 0; sy < height; sy += 1) {
+      const y = centerY + sy - halfH;
       if (y < 0 || y >= simulation.height) {
         continue;
       }
-      for (let sx = 0; sx < stamp.size; sx += 1) {
-        const color = stamp.colors[sx + sy * stamp.size];
+      for (let sx = 0; sx < width; sx += 1) {
+        const color = stamp.colors[sx + sy * width];
         if (!color) {
           continue;
         }
-        const x = centerX + sx - half;
+        const x = centerX + sx - halfW;
         if (x < 0 || x >= simulation.width) {
           continue;
         }
-        const index = simulation.index(x, y);
-        simulation.setPhotoCell(index, color);
+        visitor(simulation.index(x, y), color);
       }
     }
     return;
   }
 
   for (const pixel of stamp.pixels) {
-    const x = centerX + pixel.x - half;
-    const y = centerY + pixel.y - half;
+    const x = centerX + pixel.x - halfW;
+    const y = centerY + pixel.y - halfH;
     if (x < 0 || x >= simulation.width || y < 0 || y >= simulation.height) {
       continue;
     }
-    const index = simulation.index(x, y);
-    simulation.setPhotoCell(index, pixel.color);
+    visitor(simulation.index(x, y), pixel.color);
   }
+}
+
+function applyPhotoStamp(simulation, photoStamp, centerX, centerY) {
+  forEachPhotoStampCell(simulation, photoStamp, centerX, centerY, (index, color) => {
+    simulation.setPhotoCell(index, color);
+  });
+}
+
+function collectPhotoStampCells(simulation, photoStamp, centerX, centerY) {
+  const cells = [];
+  forEachPhotoStampCell(simulation, photoStamp, centerX, centerY, (index, color) => {
+    cells.push({ index, color });
+  });
+  return cells;
 }
 
 function createResumeStamp() {
@@ -154,4 +171,4 @@ function applyResumeStamp(simulation, centerX, centerY) {
   return indices;
 }
 
-export { applyPhotoStamp, applyResumeStamp, loadPhotoStamps };
+export { applyPhotoStamp, applyResumeStamp, collectPhotoStampCells, loadPhotoStamps };

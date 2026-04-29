@@ -1,5 +1,7 @@
 import { SPECIES } from "./simulation.js";
 
+const RESUME_PHOTO_DATA = 251;
+
 function packColor(r, g, b, a = 255) {
   return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;
 }
@@ -155,8 +157,6 @@ const BIRD_SUCK_RADIUS_SQ = BIRD_SUCK_RADIUS * BIRD_SUCK_RADIUS;
 const BIRD_EVENT_HORIZON_SQ = 7 * 7;
 const BIRD_RESPAWN_FRAMES = 84;
 const BIRD_FRAGMENT_BASE_PULL = 1.4;
-const BIRD_FIREWORK_IGNITE_RADIUS = 6;
-const BIRD_FIREWORK_IGNITE_RADIUS_SQ = BIRD_FIREWORK_IGNITE_RADIUS * BIRD_FIREWORK_IGNITE_RADIUS;
 const BIRD_BODY = 0;
 const BIRD_WING = 1;
 const BIRD_HEAD = 2;
@@ -250,6 +250,28 @@ function tintToward(packed, tintR, tintG, tintB, strength) {
   );
 }
 
+function blendPacked(basePacked, overlayPacked, opacity) {
+  if (opacity <= 0) {
+    return basePacked;
+  }
+  if (opacity >= 1) {
+    return overlayPacked;
+  }
+
+  const baseR = basePacked & 255;
+  const baseG = (basePacked >>> 8) & 255;
+  const baseB = (basePacked >>> 16) & 255;
+  const overlayR = overlayPacked & 255;
+  const overlayG = (overlayPacked >>> 8) & 255;
+  const overlayB = (overlayPacked >>> 16) & 255;
+  return packColor(
+    clamp(mixChannel(baseR, overlayR, opacity)),
+    clamp(mixChannel(baseG, overlayG, opacity)),
+    clamp(mixChannel(baseB, overlayB, opacity)),
+    255,
+  );
+}
+
 function fireworkColor(state, frame) {
   let base = FIREWORK_ORANGE;
   let life = 15;
@@ -276,6 +298,90 @@ function fireworkColor(state, frame) {
     clamp(mixChannel(base[1] * intensity + shimmer, 248, whiteHot)),
     clamp(mixChannel(base[2] * intensity + shimmer, 218, whiteHot)),
   );
+}
+
+function stampDecorativePhotos(output, width, height, decorativePhotos, simulation, photoColors) {
+  const hiddenPhotoIndices = new Set();
+  for (let i = 0; i < decorativePhotos.length; i += 1) {
+    const decorative = decorativePhotos[i];
+    if (!decorative || decorative.opacity <= 0) {
+      continue;
+    }
+    if (decorative.liveCells && decorative.cells?.length) {
+      for (let j = 0; j < decorative.cells.length; j += 1) {
+        const { index } = decorative.cells[j];
+        if (
+          index < 0 ||
+          index >= output.length ||
+          simulation.types[index] !== SPECIES.PHOTO ||
+          photoColors[index] === 0
+        ) {
+          continue;
+        }
+        output[index] = blendPacked(output[index], photoColors[index], decorative.opacity);
+        if (decorative.opacity < 0.999) {
+          hiddenPhotoIndices.add(index);
+        }
+      }
+      continue;
+    }
+    if (!decorative.photoStamp) {
+      continue;
+    }
+    const { stamp } = decorative.photoStamp;
+    const stampWidth = stamp.width ?? stamp.size;
+    const stampHeight = stamp.height ?? stamp.size;
+    const halfW = Math.floor(stampWidth / 2);
+    const halfH = Math.floor(stampHeight / 2);
+
+    if (stamp.colors) {
+      for (let sy = 0; sy < stampHeight; sy += 1) {
+        const y = decorative.y + sy - halfH;
+        if (y < 0 || y >= height) {
+          continue;
+        }
+        for (let sx = 0; sx < stampWidth; sx += 1) {
+          const color = stamp.colors[sx + sy * stampWidth];
+          if (!color) {
+            continue;
+          }
+          const x = decorative.x + sx - halfW;
+          if (x < 0 || x >= width) {
+            continue;
+          }
+          const index = y * width + x;
+          output[index] = blendPacked(output[index], color, decorative.opacity);
+        }
+      }
+      continue;
+    }
+
+    for (let p = 0; p < stamp.pixels.length; p += 1) {
+      const pixel = stamp.pixels[p];
+      const x = decorative.x + pixel.x - halfW;
+      const y = decorative.y + pixel.y - halfH;
+      if (x < 0 || x >= width || y < 0 || y >= height) {
+        continue;
+      }
+      const index = y * width + x;
+      output[index] = blendPacked(output[index], pixel.color, decorative.opacity);
+    }
+  }
+  return hiddenPhotoIndices;
+}
+
+function stampResumePixels(output, simulation, photoColors) {
+  const { size } = simulation;
+  for (let index = 0; index < size; index += 1) {
+    if (
+      simulation.types[index] !== SPECIES.PHOTO ||
+      simulation.data[index] !== RESUME_PHOTO_DATA ||
+      photoColors[index] === 0
+    ) {
+      continue;
+    }
+    output[index] = photoColors[index];
+  }
 }
 
 function collectBlackHoles(blackHoleIndices, width, height) {
@@ -363,6 +469,7 @@ function resetBirdState(state, bird, width, height, frame, respawned = false) {
   state.capturePoseIndex = 0;
   state.fragments = [];
   state.burning = false;
+  state.burnSource = null;
 }
 
 function createBirdStates(width, height, frame = 0) {
@@ -378,6 +485,7 @@ function createBirdStates(width, height, frame = 0) {
       capturePoseIndex: 0,
       fragments: [],
       burning: false,
+      burnSource: null,
     };
     resetBirdState(state, bird, width, height, frame, false);
     return state;
@@ -490,6 +598,58 @@ function findNearestFirework(x, y, fireworks) {
   return { nearestFirework, nearestDistSq };
 }
 
+function stampCoversFirework(pixelX, pixelY, stampScale, firework) {
+  return firework.x >= pixelX &&
+    firework.x < pixelX + stampScale &&
+    firework.y >= pixelY &&
+    firework.y < pixelY + stampScale;
+}
+
+function getBirdFireworkHit(state, bird, fireworks) {
+  if (fireworks.length === 0) {
+    return null;
+  }
+
+  const scale = bird.scale ?? 1;
+  const poseIndex = state.captured || state.burning
+    ? state.capturePoseIndex
+    : Math.floor((state.animationFrame * 0.45 + bird.bob) / 6) % BIRD_POSES.length;
+  const pose = BIRD_POSES[poseIndex];
+  const stampScale = Math.max(1, Math.round(scale));
+
+  if ((state.captured || state.burning) && state.fragments.length > 0) {
+    for (let i = 0; i < state.fragments.length; i += 1) {
+      const fragment = state.fragments[i];
+      if (fragment.consumed) {
+        continue;
+      }
+      const pixelX = Math.round(fragment.detached ? fragment.x : state.x + fragment.anchorDx);
+      const pixelY = Math.round(fragment.detached ? fragment.y : state.y + fragment.anchorDy);
+      for (let j = 0; j < fireworks.length; j += 1) {
+        if (stampCoversFirework(pixelX, pixelY, fragment.stampScale, fireworks[j])) {
+          return { firework: fireworks[j], fragmentIndex: i };
+        }
+      }
+    }
+    return null;
+  }
+
+  const baseX = Math.round(state.x);
+  const baseY = Math.round(state.y);
+  for (let i = 0; i < pose.length; i += 1) {
+    const [dx, dy] = pose[i];
+    const pixelX = baseX + Math.round(dx * scale);
+    const pixelY = baseY + Math.round(dy * scale);
+    for (let j = 0; j < fireworks.length; j += 1) {
+      if (stampCoversFirework(pixelX, pixelY, stampScale, fireworks[j])) {
+        return { firework: fireworks[j], fragmentIndex: i };
+      }
+    }
+  }
+
+  return null;
+}
+
 function detachBirdFragments(state, frame, hole, distSq, bird) {
   if (state.fragments.length === 0) {
     return;
@@ -541,7 +701,7 @@ function igniteBirdFragments(state, bird, frame, firework, distSq) {
   }
 
   const scale = bird.scale ?? 1;
-  const pull = Math.max(0.22, 1 - Math.sqrt(Math.max(distSq, 0.001)) / (BIRD_FIREWORK_IGNITE_RADIUS * 2));
+  const pull = Math.max(0.22, 1 - Math.sqrt(Math.max(distSq, 0.001)) / 10);
   const detachBudget = Math.min(
     state.fragments.length,
     1 + Math.floor(pull * 3.2) + (((frame + bird.offset) & 1) === 0 ? 1 : 0),
@@ -669,6 +829,7 @@ function updateBirdStates(states, width, height, frame, blackHoles, fireworks = 
   for (let i = 0; i < states.length; i += 1) {
     const bird = BIRD_CONFIGS[i];
     const state = states[i];
+    state.animationFrame = frame;
     const scale = bird.scale ?? 1;
     const spriteWidth = birdSpriteWidth(bird);
     const baseY = birdBaseY(bird, height, flapFrame);
@@ -682,7 +843,11 @@ function updateBirdStates(states, width, height, frame, blackHoles, fireworks = 
 
     const center = birdCenterFromState(state, bird);
     let { nearestHole, nearestEdgeDistSq } = findNearestBlackHole(center.x, center.y, blackHoles);
-    let { nearestFirework, nearestDistSq: nearestFireworkDistSq } = findNearestFirework(center.x, center.y, fireworks);
+    const fireworkHit = getBirdFireworkHit(state, bird, fireworks);
+    const nearestFirework = fireworkHit?.firework ?? null;
+    const nearestFireworkDistSq = nearestFirework
+      ? (nearestFirework.x - center.x) * (nearestFirework.x - center.x) + (nearestFirework.y - center.y) * (nearestFirework.y - center.y)
+      : Infinity;
 
     if (nearestHole && nearestEdgeDistSq <= BIRD_SUCK_RADIUS_SQ) {
       state.captured = true;
@@ -690,8 +855,9 @@ function updateBirdStates(states, width, height, frame, blackHoles, fireworks = 
         createBirdFragments(state, bird, frame);
       }
     }
-    if (nearestFirework && nearestFireworkDistSq <= BIRD_FIREWORK_IGNITE_RADIUS_SQ) {
+    if (nearestFirework) {
       state.burning = true;
+      state.burnSource = nearestFirework;
       if (state.fragments.length === 0) {
         createBirdFragments(state, bird, frame);
       }
@@ -738,13 +904,16 @@ function updateBirdStates(states, width, height, frame, blackHoles, fireworks = 
     }
 
     if (state.burning) {
-      if (nearestFirework && nearestFireworkDistSq <= BIRD_FIREWORK_IGNITE_RADIUS_SQ * 2.5) {
-        igniteBirdFragments(state, bird, frame, nearestFirework, nearestFireworkDistSq);
+      const burnSource = nearestFirework ?? state.burnSource;
+      if (burnSource) {
+        const burnDistSq = (burnSource.x - center.x) * (burnSource.x - center.x) + (burnSource.y - center.y) * (burnSource.y - center.y);
+        igniteBirdFragments(state, bird, frame, burnSource, burnDistSq);
       }
-      const remainingFragments = updateBurningBirdFragments(state, nearestFirework);
+      const remainingFragments = updateBurningBirdFragments(state, burnSource);
       if (remainingFragments === 0) {
         state.respawn = BIRD_RESPAWN_FRAMES;
         state.burning = false;
+        state.burnSource = null;
         state.vx = 0;
         state.vy = 0;
         state.fragments = [];
@@ -829,7 +998,12 @@ class CanvasRenderer {
     this.ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
     this.animationFrame = 0;
     this.birdStates = createBirdStates(simulation.width, simulation.height);
+    this.decorativePhotos = [];
     this.resize();
+  }
+
+  setDecorativePhotos(decorativePhotos) {
+    this.decorativePhotos = decorativePhotos ?? [];
   }
 
   resize() {
@@ -858,6 +1032,14 @@ class CanvasRenderer {
     output.set(sky);
     updateBirdStates(this.birdStates, width, height, this.animationFrame, blackHoles, fireworks);
     stampBirds(output, width, height, this.animationFrame, this.birdStates);
+    const hiddenPhotoIndices = stampDecorativePhotos(
+      output,
+      width,
+      height,
+      this.decorativePhotos,
+      this.simulation,
+      photoColors,
+    );
 
     for (let y = minY; y <= maxY; y += 1) {
       let index = y * width + minX;
@@ -890,6 +1072,9 @@ class CanvasRenderer {
         }
 
         if (species === SPECIES.PHOTO) {
+          if (hiddenPhotoIndices.has(index)) {
+            continue;
+          }
           output[index] = photoColors[index] || stoneBase;
           continue;
         }
@@ -902,6 +1087,8 @@ class CanvasRenderer {
         output[index] = TABLES.base[species][tone];
       }
     }
+
+    stampResumePixels(output, this.simulation, photoColors);
 
     this.ctx.putImageData(
       this.imageData,

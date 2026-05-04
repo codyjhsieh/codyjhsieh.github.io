@@ -22,6 +22,7 @@ const FIREWORK_DIRECTIONS = [
   [0, 3], [-2, 2], [-3, 0], [-2, -2],
 ];
 const SEEDED_WATER_RADIUS_SCALE = Math.sqrt(0.7);
+const MOBILE_DUNES_WATER_AMOUNT_SCALE = Math.sqrt(0.6);
 const BLACK_HOLE_RADIUS = 44;
 const BLACK_HOLE_CORE_RADIUS_SQ = 9;
 
@@ -231,9 +232,9 @@ class SandSimulation {
     this.markDirtyAll();
   }
 
-  seed(sceneId = "dunes") {
+  seed(sceneId = "dunes", { mobileDunesWater = false } = {}) {
     this.clear();
-    this.applyScene(sceneId);
+    this.applyScene(sceneId, { mobileDunesWater });
   }
 
   setGravity(x, y) {
@@ -460,13 +461,13 @@ class SandSimulation {
     }
   }
 
-  applyScene(sceneId) {
+  applyScene(sceneId, { mobileDunesWater = false } = {}) {
     const floorY = this.height - 10;
     const codyScale = Math.max(2, Math.min(5, Math.floor((this.width - 18) / 28)));
     const codyWidth = 26 * codyScale;
     const codyX = Math.max(6, Math.floor((this.width - codyWidth) * 0.5));
     const codyY = Math.max(8, Math.min(18, Math.floor(this.height * 0.05)));
-    const waterRadius = (radius) => Math.max(1, radius * SEEDED_WATER_RADIUS_SCALE);
+    const waterRadius = (radius, amountScale = 1) => Math.max(1, radius * SEEDED_WATER_RADIUS_SCALE * amountScale);
     this.paintLine(0, floorY, this.width - 1, floorY, 6, SPECIES.STONE);
     this.paintWord("CODY", codyX, codyY, codyScale, SPECIES.STONE);
 
@@ -501,7 +502,12 @@ class SandSimulation {
     }
 
     this.paintCircle(this.width * 0.22, floorY - 22, 24, SPECIES.SAND);
-    this.paintCircle(this.width * 0.54, floorY - 38, waterRadius(25), SPECIES.WATER);
+    this.paintCircle(
+      this.width * 0.54,
+      floorY - 38,
+      waterRadius(25, mobileDunesWater ? MOBILE_DUNES_WATER_AMOUNT_SCALE : 1),
+      SPECIES.WATER,
+    );
     this.paintCircle(this.width * 0.82, floorY - 22, 22, SPECIES.SAND);
 
     // Left cactus

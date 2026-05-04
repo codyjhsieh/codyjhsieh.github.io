@@ -106,6 +106,12 @@ function getPhotoDisplaySlots() {
     : PHOTO_DISPLAY_SLOTS_DESKTOP;
 }
 
+function getSeedOptions(sceneId = state.activeScene) {
+  return {
+    mobileDunesWater: sceneId === "dunes" && window.matchMedia(MOBILE_MEDIA_QUERY).matches,
+  };
+}
+
 function getPhotoOnlySlots() {
   return getPhotoDisplaySlots().filter((slot) => !slot.resume);
 }
@@ -399,7 +405,7 @@ function resizeWorld({ reseed = false } = {}) {
   renderer.resize();
   resizeHudCanvas();
   if (reseed) {
-    simulation.seed(state.activeScene);
+    simulation.seed(state.activeScene, getSeedOptions());
   }
   syncDecorativePhotoLayout();
   metrics = simulation.sampleMetrics();
@@ -671,7 +677,7 @@ function handlePointerDown(event) {
       },
       onSceneChange: (sceneId) => {
         state.activeScene = sceneId;
-        simulation.seed(sceneId);
+        simulation.seed(sceneId, getSeedOptions(sceneId));
         decorateSceneWithPhotos();
         metrics = simulation.sampleMetrics();
         state.hudSection = null;
@@ -695,7 +701,7 @@ function handlePointerDown(event) {
         hudDirty = true;
       },
       onReseed: () => {
-        simulation.seed(state.activeScene);
+        simulation.seed(state.activeScene, getSeedOptions());
         decorateSceneWithPhotos();
         metrics = simulation.sampleMetrics();
         hudDirty = true;
@@ -890,7 +896,7 @@ function hideLoadingOverlay() {
 async function boot() {
   resizeWorld();
   photoStamps = await loadPhotoStamps();
-  simulation.seed(state.activeScene);
+  simulation.seed(state.activeScene, getSeedOptions());
   decorateSceneWithPhotos();
   metrics = simulation.sampleMetrics();
   appReady = true;
@@ -907,7 +913,7 @@ async function boot() {
 boot().catch((error) => {
   console.error("Failed to boot sand lab:", error);
   resizeWorld();
-  simulation.seed(state.activeScene);
+  simulation.seed(state.activeScene, getSeedOptions());
   renderer.setDecorativePhotos([]);
   placeResume();
   metrics = simulation.sampleMetrics();

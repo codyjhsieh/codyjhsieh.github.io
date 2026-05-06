@@ -1,4 +1,4 @@
-import { SPECIES } from "./simulation";
+import { SPECIES } from "./simulation.js";
 
 const BRUSH_SIZES = [2, 4, 8, 12, 18];
 

@@ -35,6 +35,23 @@ function birdCenter(state, birdIndex) {
   };
 }
 
+function visibleBirdPixel(state, birdIndex, frame) {
+  const bird = BIRD_CONFIGS[birdIndex];
+  const scale = bird.scale ?? 1;
+  const stampScale = Math.max(1, Math.round(scale));
+  const poseIndex = Math.floor((frame * 0.45 + bird.bob) / 6) % 3;
+  const poses = [
+    [[0, 2], [1, 1], [2, 0], [3, 0], [4, 1], [3, 2], [4, 2], [5, 2], [6, 2], [7, 1], [8, 1], [2, 3], [1, 4], [7, 0], [8, 0]],
+    [[0, 2], [1, 1], [2, 1], [3, 1], [4, 2], [3, 2], [4, 2], [5, 2], [6, 2], [7, 1], [8, 1], [2, 3], [1, 4], [7, 1], [8, 1]],
+    [[0, 2], [1, 3], [2, 4], [3, 4], [4, 3], [3, 2], [4, 2], [5, 2], [6, 2], [7, 1], [8, 1], [2, 3], [1, 4], [7, 3], [8, 4]],
+  ];
+  const [dx, dy] = poses[poseIndex][0];
+  return {
+    x: Math.round(state.x) + Math.round(dx * scale) + Math.floor(stampScale / 2),
+    y: Math.round(state.y) + Math.round(dy * scale) + Math.floor(stampScale / 2),
+  };
+}
+
 function drawBirds(states, frame, width = 220, height = 120) {
   const output = new Uint32Array(width * height);
   stampBirds(output, width, height, frame, states);
@@ -192,10 +209,10 @@ runTest("fireworks burn birds apart like flammable material", () => {
   let frame = 120;
   const states = createBirdStates(width, height, frame);
   const targetBirdIndex = 1;
-  const center = birdCenter(states[targetBirdIndex], targetBirdIndex);
+  const hitPixel = visibleBirdPixel(states[targetBirdIndex], targetBirdIndex, frame + 1);
   const types = new Uint8Array(width * height);
-  const fireworkX = Math.round(center.x);
-  const fireworkY = Math.round(center.y);
+  const fireworkX = hitPixel.x;
+  const fireworkY = hitPixel.y;
   types[fireworkY * width + fireworkX] = 8;
   const fireworks = collectFireworks(types, width);
 

@@ -23,50 +23,28 @@ const FIREWORK_DIRECTIONS = [
 ];
 const SEEDED_WATER_RADIUS_SCALE = Math.sqrt(0.7);
 const MOBILE_DUNES_WATER_AMOUNT_SCALE = Math.sqrt(0.6);
-const BLACK_HOLE_RADIUS = 44;
-const BLACK_HOLE_CORE_RADIUS_SQ = 9;
-
-function buildBlackHoleOffsets() {
-  const offsets = [];
-  const radiusSq = BLACK_HOLE_RADIUS * BLACK_HOLE_RADIUS;
-
-  for (let dy = -BLACK_HOLE_RADIUS; dy <= BLACK_HOLE_RADIUS; dy += 1) {
-    for (let dx = -BLACK_HOLE_RADIUS; dx <= BLACK_HOLE_RADIUS; dx += 1) {
-      if (dx === 0 && dy === 0) {
-        continue;
-      }
-
-      const distSq = dx * dx + dy * dy;
-      if (distSq > radiusSq) {
-        continue;
-      }
-
-      const distanceBand = Math.max(1, Math.ceil(Math.sqrt(distSq)));
-      const normalized = distanceBand / BLACK_HOLE_RADIUS;
-      const inwardX = dx === 0 ? 0 : -Math.sign(dx);
-      const inwardY = dy === 0 ? 0 : -Math.sign(dy);
-      const tangentX = dy === 0 ? 0 : Math.sign(dy);
-      const tangentY = dx === 0 ? 0 : -Math.sign(dx);
-
-      offsets.push({
-        dx,
-        dy,
-        distSq,
-        distanceBand,
-        cadence: Math.max(4, Math.floor(6 + normalized * normalized * 24)),
-        inwardX,
-        inwardY,
-        tangentX,
-        tangentY,
-        inwardBias: normalized < 0.28 ? 4 : normalized < 0.62 ? 2 : 1,
-      });
-    }
-  }
-
-  return offsets;
-}
-
-const BLACK_HOLE_OFFSETS = buildBlackHoleOffsets();
+const WORD_GLYPHS = {
+  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+  C: ["11110", "10000", "10000", "10000", "10000", "10000", "11110"],
+  D: ["11100", "10010", "10001", "10001", "10001", "10010", "11100"],
+  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
+  G: ["01111", "10000", "10000", "10011", "10001", "10001", "01110"],
+  H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
+  I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
+  K: ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
+  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
+  N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+  O: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
+  P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
+  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
+  U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
+  W: ["10001", "10001", "10001", "10101", "10101", "10101", "01010"],
+  Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+};
 
 class SandSimulation {
   constructor(width, height) {
@@ -417,35 +395,13 @@ class SandSimulation {
   }
 
   lockWord(text, startX, startY, scale, type = SPECIES.STONE, data = 0) {
-    const glyphs = {
-      A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
-      B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
-      C: ["11110", "10000", "10000", "10000", "10000", "10000", "11110"],
-      D: ["11100", "10010", "10001", "10001", "10001", "10010", "11100"],
-      E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
-      F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
-      G: ["01111", "10000", "10000", "10011", "10001", "10001", "01110"],
-      H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
-      I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
-      K: ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
-      L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
-      N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
-      O: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
-      P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
-      R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-      S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
-      T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
-      U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
-      W: ["10001", "10001", "10001", "10101", "10101", "10101", "01010"],
-      Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
-    };
     let cursorX = startX;
     for (const character of text) {
       if (character === " ") {
         cursorX += 6 * scale;
         continue;
       }
-      const glyph = glyphs[character];
+      const glyph = WORD_GLYPHS[character];
       if (!glyph) {
         cursorX += 6 * scale;
         continue;
@@ -469,7 +425,7 @@ class SandSimulation {
     const codyY = Math.max(8, Math.min(18, Math.floor(this.height * 0.05)));
     const waterRadius = (radius, amountScale = 1) => Math.max(1, radius * SEEDED_WATER_RADIUS_SCALE * amountScale);
     this.paintLine(0, floorY, this.width - 1, floorY, 6, SPECIES.STONE);
-    this.paintWord("CODY", codyX, codyY, codyScale, SPECIES.STONE);
+    this.lockWord("CODY", codyX, codyY, codyScale, SPECIES.STONE);
 
     if (sceneId === "fountain") {
       this.paintLine(18, floorY - 22, this.width - 18, floorY - 22, 5, SPECIES.STONE);
@@ -1211,77 +1167,92 @@ class SandSimulation {
   }
 
   updateBlackHole(index, x, y) {
+    const radius = 44;
+    const radiusSqMax = radius * radius;
+    const coreSq = 9;
     let consumed = 0;
     const phase = this.data[index] & 7;
 
-    for (let i = 0; i < BLACK_HOLE_OFFSETS.length; i += 1) {
-      const offset = BLACK_HOLE_OFFSETS[i];
-      const nx = x + offset.dx;
-      const ny = y + offset.dy;
-      if (!this.inBounds(nx, ny)) {
-        continue;
-      }
-
-      const targetIndex = this.index(nx, ny);
-      const target = this.types[targetIndex];
-      if (target === SPECIES.EMPTY || target === SPECIES.BLACK_HOLE) {
-        continue;
-      }
-
-      if (offset.distSq <= BLACK_HOLE_CORE_RADIUS_SQ) {
-        if (((this.frame + phase + nx * 7 + ny * 11 + offset.distSq) % 10) === 0) {
-          this.forceClearCell(targetIndex);
-          consumed += 1;
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        if (dx === 0 && dy === 0) {
+          continue;
         }
-        continue;
-      }
 
-      if (((this.frame + phase + nx * 3 + ny * 5) % offset.cadence) !== 0) {
-        continue;
-      }
-
-      const swirlFirst = ((this.frame + phase + offset.distanceBand) % (offset.inwardBias + 1)) !== 0;
-      if (swirlFirst) {
-        if (
-          this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX, ny + offset.tangentY) ||
-          this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX + offset.inwardX, ny + offset.tangentY + offset.inwardY) ||
-          this.tryMoveBlackHoleTarget(targetIndex, nx + offset.inwardX, ny + offset.inwardY)
-        ) {
-          consumed += 1;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!this.inBounds(nx, ny)) {
+          continue;
         }
-        continue;
-      }
 
-      if (
-        this.tryMoveBlackHoleTarget(targetIndex, nx + offset.inwardX, ny + offset.inwardY) ||
-        this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX + offset.inwardX, ny + offset.tangentY + offset.inwardY) ||
-        this.tryMoveBlackHoleTarget(targetIndex, nx + offset.tangentX, ny + offset.tangentY)
-      ) {
-        consumed += 1;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > radiusSqMax) {
+          continue;
+        }
+
+        const targetIndex = this.index(nx, ny);
+        const target = this.types[targetIndex];
+        if (target === SPECIES.EMPTY || target === SPECIES.BLACK_HOLE) {
+          continue;
+        }
+
+        if (distSq <= coreSq) {
+          if (((this.frame + phase + nx * 7 + ny * 11 + distSq) % 10) === 0) {
+            this.forceClearCell(targetIndex);
+            consumed += 1;
+          }
+          continue;
+        }
+
+        const distanceBand = Math.max(1, Math.ceil(Math.sqrt(distSq)));
+        const normalized = distanceBand / radius;
+        const cadence = Math.max(4, Math.floor(6 + normalized * normalized * 24));
+        if (((this.frame + phase + nx * 3 + ny * 5) % cadence) !== 0) {
+          continue;
+        }
+
+        const inwardX = dx === 0 ? 0 : -Math.sign(dx);
+        const inwardY = dy === 0 ? 0 : -Math.sign(dy);
+        const tangentX = dy === 0 ? 0 : Math.sign(dy);
+        const tangentY = dx === 0 ? 0 : -Math.sign(dx);
+        const inwardBias = normalized < 0.28 ? 4 : normalized < 0.62 ? 2 : 1;
+        const swirlFirst = ((this.frame + phase + distanceBand) % (inwardBias + 1)) !== 0;
+        const candidates = swirlFirst
+          ? [
+              [nx + tangentX, ny + tangentY],
+              [nx + tangentX + inwardX, ny + tangentY + inwardY],
+              [nx + inwardX, ny + inwardY],
+            ]
+          : [
+              [nx + inwardX, ny + inwardY],
+              [nx + tangentX + inwardX, ny + tangentY + inwardY],
+              [nx + tangentX, ny + tangentY],
+            ];
+
+        for (let i = 0; i < candidates.length; i += 1) {
+          const destX = candidates[i][0];
+          const destY = candidates[i][1];
+          if (!this.inBounds(destX, destY)) {
+            continue;
+          }
+
+          const destIndex = this.index(destX, destY);
+          const occupant = this.types[destIndex];
+          if (occupant === SPECIES.EMPTY || occupant === SPECIES.WATER) {
+            if (occupant === SPECIES.WATER) {
+              this.forceClearCell(destIndex);
+            }
+            this.moveCell(targetIndex, destIndex);
+            consumed += 1;
+            break;
+          }
+        }
       }
     }
 
     this.data[index] = 96 + ((phase + consumed + 1) & 31);
-    this.queueCellActivity(index, BLACK_HOLE_RADIUS);
+    this.queueCellActivity(index, radius);
     this.mark(index);
-  }
-
-  tryMoveBlackHoleTarget(targetIndex, destX, destY) {
-    if (!this.inBounds(destX, destY)) {
-      return false;
-    }
-
-    const destIndex = this.index(destX, destY);
-    const occupant = this.types[destIndex];
-    if (occupant !== SPECIES.EMPTY && occupant !== SPECIES.WATER) {
-      return false;
-    }
-
-    if (occupant === SPECIES.WATER) {
-      this.forceClearCell(destIndex);
-    }
-    this.moveCell(targetIndex, destIndex);
-    return true;
   }
 
   sampleMetrics() {

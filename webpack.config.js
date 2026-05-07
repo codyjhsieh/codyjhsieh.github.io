@@ -10,7 +10,7 @@ module.exports = (_, argv) => {
     entry: "./js/bootstrap.js",
     output: {
       path: path.resolve(__dirname, "dist"),
-      filename: "app.js",
+      filename: "app.mobile-aspect.js",
       chunkFilename: "[name].[contenthash:8].js",
       publicPath: "/",
     },

@@ -10,6 +10,7 @@ import { drawHud, handleHudPointer } from "./ui.js";
 const CELL_SIZE = 4;
 const MIN_WORLD_WIDTH = 120;
 const MIN_WORLD_HEIGHT = 120;
+const MOBILE_MIN_WORLD_SIZE = 80;
 const MAX_TICKS_PER_FRAME = 1;
 const MIN_TICKS_PER_FRAME = 1;
 const PHOTO_DISPLAY_SLOTS_DESKTOP = [
@@ -386,9 +387,12 @@ function decorateSceneWithPhotos() {
 
 function getWorldSize() {
   const rect = playfield.getBoundingClientRect();
+  const mobile = window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+  const minWidth = mobile ? MOBILE_MIN_WORLD_SIZE : MIN_WORLD_WIDTH;
+  const minHeight = mobile ? MOBILE_MIN_WORLD_SIZE : MIN_WORLD_HEIGHT;
   return {
-    width: Math.max(MIN_WORLD_WIDTH, Math.floor(rect.width / CELL_SIZE)),
-    height: Math.max(MIN_WORLD_HEIGHT, Math.floor(rect.height / CELL_SIZE)),
+    width: Math.max(minWidth, Math.floor(rect.width / CELL_SIZE)),
+    height: Math.max(minHeight, Math.floor(rect.height / CELL_SIZE)),
   };
 }
 

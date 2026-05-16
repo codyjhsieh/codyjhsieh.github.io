@@ -380,8 +380,18 @@ function placeResume(slot = getResumeSlot()) {
 }
 
 function decorateSceneWithPhotos() {
-  resetDecorativePhotos();
-  placeResume();
+  if (state.activeScene !== "dunes") {
+    clearAllDecorativePhotoMaterial();
+    decorativePhotoSlots = [];
+    decorativePhotoSeen = new Set();
+    decorativePhotoTransition = "idle";
+    decorativePhotoPhaseStartedAt = performance.now();
+    renderer.setDecorativePhotos([]);
+    resumeHover = null;
+  } else {
+    resetDecorativePhotos();
+    placeResume();
+  }
   metrics = simulation.sampleMetrics();
 }
 
@@ -401,7 +411,11 @@ function resizeWorld({ reseed = false } = {}) {
   const changed = next.width !== simulation.width || next.height !== simulation.height;
   if (!changed) {
     resizeHudCanvas();
-    syncDecorativePhotoLayout();
+    if (state.activeScene === "dunes") {
+      syncDecorativePhotoLayout();
+    } else {
+      renderer.setDecorativePhotos([]);
+    }
     return;
   }
   clearAllDecorativePhotoMaterial();
@@ -411,7 +425,11 @@ function resizeWorld({ reseed = false } = {}) {
   if (reseed) {
     simulation.seed(state.activeScene, getSeedOptions());
   }
-  syncDecorativePhotoLayout();
+  if (state.activeScene === "dunes") {
+    syncDecorativePhotoLayout();
+  } else {
+    renderer.setDecorativePhotos([]);
+  }
   metrics = simulation.sampleMetrics();
 }
 
@@ -641,6 +659,9 @@ function enablePhoneTilt({ fromPrompt = false } = {}) {
 }
 
 function isResumeHit(point) {
+  if (state.activeScene !== "dunes") {
+    return false;
+  }
   return isVisibleResumePixel(simulation, simulation.index(point.x, point.y));
 }
 
@@ -883,7 +904,9 @@ function frame(now) {
     metrics = simulation.sampleMetrics();
   }
 
-  updateDecorativePhotos(now);
+  if (state.activeScene === "dunes") {
+    updateDecorativePhotos(now);
+  }
   renderer.render();
   updateHud(now, fps);
 
@@ -919,8 +942,7 @@ boot().catch((error) => {
   console.error("Failed to boot sand lab:", error);
   resizeWorld();
   simulation.seed(state.activeScene, getSeedOptions());
-  renderer.setDecorativePhotos([]);
-  placeResume();
+  decorateSceneWithPhotos();
   metrics = simulation.sampleMetrics();
   appReady = true;
   hudDirty = true;

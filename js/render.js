@@ -125,9 +125,16 @@ function buildTables() {
         g = clamp(g + Math.floor(pulse * 0.2));
         b = clamp(b - Math.floor(pulse * 0.32));
       } else if (species === SPECIES.OIL) {
-        r = clamp(r + pulse - 2);
-        g = clamp(g + pulse);
-        b = clamp(b + pulse + 4);
+        if (tone >= 160) {
+          const flameT = 0.48 + ((tone - 160) % 16) * 0.018;
+          r = clamp(mixChannel(r, 238, flameT));
+          g = clamp(mixChannel(g, 108, flameT * 0.75));
+          b = clamp(mixChannel(b, 42, flameT * 0.45));
+        } else {
+          r = clamp(r + pulse - 2);
+          g = clamp(g + pulse);
+          b = clamp(b + pulse + 4);
+        }
       } else if (species === SPECIES.BLACK_HOLE) {
         r = clamp(r + Math.floor(pulse * 0.25));
         g = clamp(g + Math.floor(pulse * 0.25));

@@ -1,6 +1,6 @@
-# Cody Hsieh Sand Lab
+# Cody Hsieh Portfolio
 
-A falling sand sandbox built as a pure JavaScript canvas simulation. Draw elements, watch them interact, tilt your phone to shift gravity, and launch fireworks into the sky.
+An interactive falling-sand portfolio for [codyhsieh.com](https://codyhsieh.com). Draw elements, watch them interact, tilt your phone to shift gravity, stamp photos into the world, and open Cody's resume from the simulation.
 
 ## Stack
 
@@ -8,6 +8,15 @@ A falling sand sandbox built as a pure JavaScript canvas simulation. Draw elemen
 - HTML Canvas 2D rendering
 - Webpack 5 for bundling
 - No runtime dependencies beyond the browser
+
+## Live Site & Deploy
+
+- Live site: `https://codyhsieh.com`
+- Custom domain: `CNAME`
+- Browser tab title: `Cody Hsieh Portfolio`
+- Favicon: `assets/favicon.svg`
+- GitHub Pages deploys the production `dist` artifact from `.github/workflows/deploy-pages.yml`
+- Webpack emits the browser bundle as `app.mobile-aspect.js`; `index.html` loads that file from the site root
 
 ## Architecture
 
@@ -27,10 +36,10 @@ The main loop runs via `requestAnimationFrame`. Each frame:
 
 ### Key data structures
 
-- `species[w*h]` — Uint8Array, element type per cell
+- `types[w*h]` — Uint8Array, element type per cell
 - `data[w*h]` — Uint8Array, per-cell state (lifetime, fuel, direction, etc.)
-- `visited[w*h]` — Uint32Array, frame token to avoid double-processing
-- `activeRegion` / `nextActiveRegion` — Uint8Array bitfields for activity culling
+- `marks[w*h]` — Uint32Array, frame token to avoid double-processing
+- Active and dirty bounding boxes — tight rectangular regions for simulation and rendering work
 
 ## Elements & Physics
 
@@ -124,12 +133,11 @@ Static singularity that consumes nearby matter with an orbital swirl effect.
 - **Swirl bias**: Inner region (<28% radius) pulls inward 4:1; middle 2:1; outer equal
 - **Movement sequence**: Try tangent, try tangent+inward, try inward (order alternates by frame)
 - **Consumption cadence per offset**: `max(4, floor(6 + normalized^2 * 24))` — closer = faster
-
-Pre-computed offset table cached on first use.
+- **Bounded scan**: The singularity checks a fixed radius of 44 cells, so the cost stays capped per black hole.
 
 ### Photo
 
-Static image pixels stamped onto the grid. Colors stored in a separate `photoColors` array as 32-bit RGBA. Can be ignited by fire and fireworks. Resume pixels (data=251) are clickable.
+Static image pixels stamped onto the grid. Generated stamps preserve each source image's aspect ratio and store per-pixel colors in a separate `photoColors` array as 32-bit RGBA. They can be ignited by fire and fireworks. Resume pixels (data=251) are clickable.
 
 ### Erase
 
@@ -163,6 +171,8 @@ Buttons use multi-layer glow effects with pulsing animation for the selected sta
   - Screen rotation compensation (0/90/180/270 deg)
   - Dead zone: 0.055 magnitude, smoothing factor: 0.18
 - **Touch**: pointer events with canvas capture for drag
+- **Aspect-aware grid**: mobile uses a smaller minimum world size so photos and the resume keep their proportions instead of stretching
+- **Default water**: the mobile Dunes start scene uses about 40% less water than desktop
 - **Safe areas**: CSS env() insets for notched devices
 - **Overscroll**: disabled on body and HUD
 
@@ -179,10 +189,14 @@ Buttons use multi-layer glow effects with pulsing animation for the selected sta
 
 - **Activity culling** — only cells in the active region are processed each frame
 - **Dirty rendering** — `putImageData` clipped to changed bounds
-- **Visit tokens** — 32-bit counter avoids clearing the visited array each frame
+- **Visit tokens** — 32-bit counter avoids clearing the marks array each frame
 - **Pre-computed palettes** — 2560 colors built once at startup
 - **Frame adaptation** — tick budget reduces when FPS drops below 56
 - **DPR capping** — device pixel ratio limited to 1.5
+
+## Generated Assets
+
+`scripts/generate_photo_stamps.py` converts source images into `js/photoStamps.generated.js`. The generated stamp metadata includes width, height, and RGB pixel data so non-square assets render correctly in the sand grid.
 
 ## Commands
 
@@ -190,7 +204,7 @@ Buttons use multi-layer glow effects with pulsing animation for the selected sta
 npm install
 npm run dev      # Dev server with hot reload
 npm run build    # Production build with source maps
-npm test         # Fireworks E2E test + build
+npm test         # E2E coverage for fireworks, black holes, birds + build
 ```
 
 ## Algorithmic Analysis
@@ -205,8 +219,8 @@ Let **N = W x H** (total grid cells), **A** = active region area, **P** = partic
 | Visit check | O(1) per cell | Token comparison against `Uint32Array`, no clearing needed |
 | Per-cell update | O(1) amortized | Most elements check a fixed neighbor set (6–8) |
 | Water pressure flow | O(20) worst case | Linear scan up to 20 cells laterally, bounded constant |
-| Black hole update | O(\|offsets\|) per hole | Pre-computed offset table: ~6,000 entries within r=44 circle |
-| Black hole total | O(B x 6000) | Capped at 12 tracked holes in the renderer |
+| Black hole update | O(r^2) per hole | Bounded radius of 44 cells, about 6,000 checked positions |
+| Black hole total | O(B x 6000) | Simulation cost scales with black holes; renderer halo checks are capped separately |
 | Firework burst | O(72) | 8 spokes x 6 sparks + 8 x 3 shells = 72 cells written |
 | Active region swap | O(1) | Next-frame region is a single bounding box, swapped by assignment |
 
@@ -235,7 +249,7 @@ Instead of clearing the `marks[N]` array each frame (O(N)), the simulation incre
 |-------|-----------|-------|
 | Dirty region read | O(1) | Single bounding box consumed from simulation |
 | Pixel loop | O(D) | Only dirty pixels are iterated |
-| Black hole halo tint | O(D x B) | Each dirty pixel checks distance to up to 12 black holes |
+| Black hole halo tint | O(D x min(B, 12)) | Each dirty pixel checks distance to up to 12 black hole regions |
 | `putImageData` | O(D) | Clipped to dirty bounds via the 4-argument overload |
 | Sky generation | O(N) | Built once on resize, not per frame |
 | Color table lookup | O(1) per pixel | Pre-built `Uint32Array[256]` per species, direct index |
@@ -279,7 +293,3 @@ The simulation is designed to degrade gracefully: an idle screen costs nothing, 
 ## Design
 
 The design doc lives at [docs/sand-game-design.md](docs/sand-game-design.md).
-
-## Credits
-
-- Sandspiel by Max Bittker: `LICENSE.upstream-sandspiel`

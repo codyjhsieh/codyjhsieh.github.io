@@ -13,6 +13,11 @@ const SPECIES = {
 
 const OIL_NEIGHBORS = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1]];
 const FIRE_NEIGHBORS = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+const OIL_IGNITION_MASK = 7;
+const OIL_SPARK_IGNITION_MASK = 3;
+const OIL_BURN_LIFE_BASE = 620;
+const OIL_BURN_LIFE_VARIANCE = 180;
+const BURNING_OIL_TONE_BASE = 160;
 
 const FIREWORK_ROCKET_BASE = 192;
 const FIREWORK_SHELL_BASE = 128;
@@ -53,6 +58,7 @@ class SandSimulation {
     this.size = 0;
     this.types = new Uint8Array(0);
     this.data = new Uint8Array(0);
+    this.oilBurnLife = new Uint16Array(0);
     this.photoColors = new Uint32Array(0);
     this.locked = new Uint8Array(0);
     this.marks = new Uint32Array(0);
@@ -112,6 +118,7 @@ class SandSimulation {
     }
     this.types[index] = type;
     this.data[index] = data;
+    this.oilBurnLife[index] = 0;
     if (type !== SPECIES.PHOTO) {
       this.photoColors[index] = 0;
     }
@@ -136,6 +143,7 @@ class SandSimulation {
     }
     this.types[index] = SPECIES.EMPTY;
     this.data[index] = 0;
+    this.oilBurnLife[index] = 0;
     this.photoColors[index] = 0;
     this.locked[index] = 0;
     this.noteCellChange(index, this.activityRadiusFor(SPECIES.EMPTY, current));
@@ -144,6 +152,7 @@ class SandSimulation {
   clear() {
     this.types.fill(SPECIES.EMPTY);
     this.data.fill(0);
+    this.oilBurnLife.fill(0);
     this.photoColors.fill(0);
     this.locked.fill(0);
     this.particleCount = 0;
@@ -162,6 +171,7 @@ class SandSimulation {
     const nextSize = nextWidth * nextHeight;
     const nextTypes = new Uint8Array(nextSize);
     const nextData = new Uint8Array(nextSize);
+    const nextOilBurnLife = new Uint16Array(nextSize);
     const nextPhotoColors = new Uint32Array(nextSize);
     const nextLocked = new Uint8Array(nextSize);
     const nextMarks = new Uint32Array(nextSize);
@@ -178,6 +188,7 @@ class SandSimulation {
         const type = this.types[oldIndex];
         nextTypes[nextIndex] = type;
         nextData[nextIndex] = this.data[oldIndex];
+        nextOilBurnLife[nextIndex] = this.oilBurnLife[oldIndex];
         nextPhotoColors[nextIndex] = this.photoColors[oldIndex];
         nextLocked[nextIndex] = this.locked[oldIndex];
         if (type !== SPECIES.EMPTY) {
@@ -200,6 +211,7 @@ class SandSimulation {
     this.size = nextSize;
     this.types = nextTypes;
     this.data = nextData;
+    this.oilBurnLife = nextOilBurnLife;
     this.photoColors = nextPhotoColors;
     this.locked = nextLocked;
     this.marks = nextMarks;
@@ -428,22 +440,136 @@ class SandSimulation {
     this.lockWord("CODY", codyX, codyY, codyScale, SPECIES.STONE);
 
     if (sceneId === "fountain") {
-      this.paintLine(18, floorY - 22, this.width - 18, floorY - 22, 5, SPECIES.STONE);
-      this.paintCircle(this.width * 0.5, floorY - 42, waterRadius(9), SPECIES.WATER);
-      this.paintCircle(this.width * 0.5, floorY - 58, waterRadius(7), SPECIES.WATER);
-      this.paintCircle(this.width * 0.25, floorY - 18, 11, SPECIES.SAND);
-      this.paintCircle(this.width * 0.75, floorY - 18, 11, SPECIES.SAND);
+      const mobileLayout = this.height > this.width * 1.08;
+      const cx = this.width * (mobileLayout ? 0.5 : 0.42);
+      const halfWidth = Math.max(28, Math.floor(this.width * (mobileLayout ? 0.34 : 0.29)));
+      const left = Math.max(8, Math.floor(cx - halfWidth));
+      const right = Math.min(this.width - 9, Math.floor(cx + halfWidth));
+      const mobileHudClearance = Math.max(30, Math.floor(this.height * 0.16));
+      const basinY = mobileLayout
+        ? Math.max(codyY + 58, floorY - mobileHudClearance)
+        : Math.max(codyY + 56, floorY - 42);
+      const upperY = mobileLayout
+        ? Math.max(codyY + 24, basinY - Math.max(50, Math.floor(this.height * 0.32)))
+        : Math.max(codyY + 22, Math.floor(this.height * 0.36));
+      const spoutY = Math.max(codyY + 12, upperY - (mobileLayout ? 22 : 28));
+      const columnTop = upperY + 6;
+      const lowerLip = basinY - 6;
+      const upperHalf = Math.max(18, Math.floor((right - left) * 0.22));
+
+      // Lower catch basin, thick enough to hold water on small/mobile grids.
+      this.paintLine(left, basinY, right, basinY, 6, SPECIES.STONE);
+      this.paintLine(left, basinY - 1, left + 14, basinY + 18, 5, SPECIES.STONE);
+      this.paintLine(right, basinY - 1, right - 14, basinY + 18, 5, SPECIES.STONE);
+      this.paintLine(left + 10, lowerLip, right - 10, lowerLip, 3, SPECIES.STONE);
+      this.paintCircle(left, basinY, 5, SPECIES.STONE);
+      this.paintCircle(right, basinY, 5, SPECIES.STONE);
+      this.paintCircle(left + 12, lowerLip - 1, 3, SPECIES.STONE);
+      this.paintCircle(right - 12, lowerLip - 1, 3, SPECIES.STONE);
+      this.paintCircle(cx - halfWidth * 0.28, lowerLip - 2, 3, SPECIES.STONE);
+      this.paintCircle(cx, lowerLip - 3, 4, SPECIES.STONE);
+      this.paintCircle(cx + halfWidth * 0.28, lowerLip - 2, 3, SPECIES.STONE);
+
+      // Central column and rounded upper bowl.
+      this.paintLine(cx, columnTop, cx, basinY - 5, 7, SPECIES.STONE);
+      this.paintCircle(cx, columnTop - 2, 8, SPECIES.STONE);
+      this.paintLine(cx - 5, columnTop + 8, cx - 5, basinY - 11, 2, SPECIES.STONE);
+      this.paintLine(cx + 5, columnTop + 8, cx + 5, basinY - 11, 2, SPECIES.STONE);
+      this.paintLine(cx - upperHalf, upperY, cx + upperHalf, upperY, 5, SPECIES.STONE);
+      this.paintLine(cx - upperHalf, upperY, cx - upperHalf * 0.6, upperY + 9, 4, SPECIES.STONE);
+      this.paintLine(cx + upperHalf, upperY, cx + upperHalf * 0.6, upperY + 9, 4, SPECIES.STONE);
+      this.paintCircle(cx - upperHalf, upperY, 4, SPECIES.STONE);
+      this.paintCircle(cx + upperHalf, upperY, 4, SPECIES.STONE);
+      this.paintCircle(cx - upperHalf * 0.45, upperY - 2, 2, SPECIES.STONE);
+      this.paintCircle(cx, upperY - 4, 3, SPECIES.STONE);
+      this.paintCircle(cx + upperHalf * 0.45, upperY - 2, 2, SPECIES.STONE);
+
+      // Spout, water reservoirs, and falling droplet clusters.
+      this.paintLine(cx, spoutY, cx, upperY - 12, 3, SPECIES.STONE);
+      this.paintCircle(cx, spoutY - 2, 4, SPECIES.STONE);
+      this.paintCircle(cx, spoutY - 8, 3, SPECIES.STONE);
+      this.paintCircle(cx, spoutY + 8, waterRadius(5), SPECIES.WATER);
+      this.paintCircle(cx, upperY - 10, waterRadius(8), SPECIES.WATER);
+      this.paintCircle(cx - 16, upperY + 4, waterRadius(5), SPECIES.WATER);
+      this.paintCircle(cx + 16, upperY + 4, waterRadius(5), SPECIES.WATER);
+      this.paintCircle(cx - 26, upperY + 15, waterRadius(4), SPECIES.WATER);
+      this.paintCircle(cx + 26, upperY + 15, waterRadius(4), SPECIES.WATER);
+      this.paintCircle(cx - 35, basinY - 18, waterRadius(5), SPECIES.WATER);
+      this.paintCircle(cx + 35, basinY - 18, waterRadius(5), SPECIES.WATER);
+      this.paintCircle(cx, basinY - 10, waterRadius(14), SPECIES.WATER);
+
+      // Ornamental side posts and mobile-visible element accents.
+      this.paintLine(left + 7, basinY - 18, left + 7, basinY + 4, 3, SPECIES.STONE);
+      this.paintLine(right - 7, basinY - 18, right - 7, basinY + 4, 3, SPECIES.STONE);
+      this.paintCircle(left + 7, basinY - 22, 4, SPECIES.STONE);
+      this.paintCircle(right - 7, basinY - 22, 4, SPECIES.STONE);
+
+      this.paintCircle(left + halfWidth * 0.26, basinY + 10, mobileLayout ? 8 : 13, SPECIES.SAND);
+      this.paintCircle(cx - halfWidth * 0.1, basinY + 13, mobileLayout ? 6 : 9, SPECIES.SAND);
+      this.paintCircle(right - halfWidth * 0.32, basinY + 10, mobileLayout ? 8 : 12, SPECIES.SAND);
+      this.paintCircle(right - halfWidth * 0.14, basinY + 12, mobileLayout ? 5 : 8, SPECIES.SAND);
+
+      const leftFireworkX = Math.max(14, left + 11);
+      const rightFireworkX = Math.min(this.width - 15, right - 11);
+      const fireworkY = basinY - 18;
+      this.paintLine(leftFireworkX, fireworkY + 12, leftFireworkX, fireworkY + 4, 2, SPECIES.STONE);
+      this.paintLine(rightFireworkX, fireworkY + 12, rightFireworkX, fireworkY + 4, 2, SPECIES.STONE);
+      this.paintCircle(leftFireworkX, fireworkY, 2, SPECIES.FIREWORK);
+      this.paintCircle(rightFireworkX, fireworkY, 2, SPECIES.FIREWORK);
       return;
     }
 
     if (sceneId === "bonfire") {
-      this.paintCircle(this.width * 0.5, floorY - 16, 20, SPECIES.SAND);
-      this.paintLine(this.width * 0.45, floorY - 14, this.width * 0.55, floorY - 24, 3, SPECIES.WOOD);
-      this.paintLine(this.width * 0.55, floorY - 14, this.width * 0.45, floorY - 24, 3, SPECIES.WOOD);
-      this.paintCircle(this.width * 0.5, floorY - 29, 7, SPECIES.FIRE);
-      this.paintCircle(this.width * 0.34, floorY - 24, 7, SPECIES.OIL);
-      this.paintCircle(this.width * 0.66, floorY - 24, 7, SPECIES.OIL);
-      this.paintCircle(this.width * 0.5, floorY - 8, 3, SPECIES.FIREWORK);
+      const mobileLayout = this.height > this.width * 1.08;
+      const cx = this.width * (mobileLayout ? 0.5 : 0.42);
+      const hudClearance = mobileLayout ? Math.max(30, Math.floor(this.height * 0.16)) : 42;
+      const pitY = Math.max(codyY + 58, floorY - hudClearance);
+      const pitRadius = Math.max(17, Math.floor(this.width * (mobileLayout ? 0.15 : 0.13)));
+      const ringRadius = pitRadius + 7;
+      const sideOffset = Math.min(cx - 10, this.width - 11 - cx, ringRadius + 16);
+      const leftPost = Math.floor(cx - sideOffset);
+      const rightPost = Math.floor(cx + sideOffset);
+
+      // Side-view ash bed and low stone hearth.
+      this.paintCircle(cx, pitY + 5, ringRadius + 8, SPECIES.SAND);
+      this.paintLine(cx - ringRadius, pitY + 2, cx + ringRadius, pitY + 2, 5, SPECIES.STONE);
+      this.paintCircle(cx - ringRadius, pitY, 5, SPECIES.STONE);
+      this.paintCircle(cx - ringRadius * 0.62, pitY - 3, 4, SPECIES.STONE);
+      this.paintCircle(cx - ringRadius * 0.25, pitY - 5, 4, SPECIES.STONE);
+      this.paintCircle(cx + ringRadius * 0.25, pitY - 5, 4, SPECIES.STONE);
+      this.paintCircle(cx + ringRadius * 0.62, pitY - 3, 4, SPECIES.STONE);
+      this.paintCircle(cx + ringRadius, pitY, 5, SPECIES.STONE);
+
+      // Side-view stacked logs and vertical flame.
+      this.paintLine(cx - pitRadius, pitY - 4, cx + pitRadius, pitY - 8, 4, SPECIES.WOOD);
+      this.paintLine(cx - pitRadius, pitY - 16, cx + pitRadius, pitY - 12, 4, SPECIES.WOOD);
+      this.paintLine(cx - pitRadius * 0.58, pitY - 1, cx - pitRadius * 0.1, pitY - 21, 3, SPECIES.WOOD);
+      this.paintLine(cx + pitRadius * 0.58, pitY - 1, cx + pitRadius * 0.1, pitY - 21, 3, SPECIES.WOOD);
+      this.paintCircle(cx, pitY - 15, mobileLayout ? 5 : 6, SPECIES.OIL);
+      this.paintCircle(cx - 6, pitY - 18, 3, SPECIES.OIL);
+      this.paintCircle(cx + 6, pitY - 18, 3, SPECIES.OIL);
+      this.paintCircle(cx, pitY - 25, mobileLayout ? 6 : 8, SPECIES.FIRE);
+      this.paintCircle(cx - 5, pitY - 30, 3, SPECIES.FIRE);
+      this.paintCircle(cx + 5, pitY - 30, 3, SPECIES.FIRE);
+      this.paintCircle(cx, pitY - 36, 2, SPECIES.FIRE);
+
+      // Balanced side interactives: oil lanterns, water buckets, and fireworks.
+      this.paintLine(leftPost, pitY - 3, leftPost, pitY - 30, 3, SPECIES.STONE);
+      this.paintLine(rightPost, pitY - 3, rightPost, pitY - 30, 3, SPECIES.STONE);
+      this.paintLine(leftPost - 5, pitY - 20, leftPost + 5, pitY - 20, 2, SPECIES.STONE);
+      this.paintLine(rightPost - 5, pitY - 20, rightPost + 5, pitY - 20, 2, SPECIES.STONE);
+      this.paintCircle(leftPost, pitY - 23, 4, SPECIES.OIL);
+      this.paintCircle(rightPost, pitY - 23, 4, SPECIES.OIL);
+      this.paintCircle(leftPost, pitY - 28, 2, SPECIES.FIRE);
+      this.paintCircle(rightPost, pitY - 28, 2, SPECIES.FIRE);
+
+      this.paintLine(leftPost + 7, pitY + 12, leftPost + 20, pitY + 12, 3, SPECIES.STONE);
+      this.paintLine(rightPost - 7, pitY + 12, rightPost - 20, pitY + 12, 3, SPECIES.STONE);
+      this.paintCircle(leftPost + 14, pitY + 7, waterRadius(4), SPECIES.WATER);
+      this.paintCircle(rightPost - 14, pitY + 7, waterRadius(4), SPECIES.WATER);
+
+      this.paintCircle(leftPost, pitY - 39, 2, SPECIES.FIREWORK);
+      this.paintCircle(rightPost, pitY - 39, 2, SPECIES.FIREWORK);
       return;
     }
 
@@ -575,6 +701,24 @@ class SandSimulation {
     return (x * 9 + y * 3) & 31;
   }
 
+  seedFireDataForFuel(type, x, y) {
+    return this.seedDataFor(SPECIES.FIRE, x, y);
+  }
+
+  shouldIgniteOil(x, y, mask = OIL_IGNITION_MASK) {
+    return ((this.frame + x * 3 + y * 5) & mask) === 0;
+  }
+
+  igniteOil(index, x, y) {
+    if (this.types[index] !== SPECIES.OIL || this.oilBurnLife[index] > 0) {
+      return;
+    }
+    this.oilBurnLife[index] = OIL_BURN_LIFE_BASE + ((x * 5 + y * 17) % OIL_BURN_LIFE_VARIANCE);
+    this.data[index] = BURNING_OIL_TONE_BASE + ((x * 7 + y * 11) & 31);
+    this.queueCellActivity(index, 3);
+    this.markDirtyRect(x - 1, y - 2, x + 1, y + 1);
+  }
+
   beginStep() {
     this.frame += 1;
     this.visitToken += 1;
@@ -639,10 +783,12 @@ class SandSimulation {
     const movedType = this.types[from];
     this.types[to] = movedType;
     this.data[to] = this.data[from];
+    this.oilBurnLife[to] = this.oilBurnLife[from];
     this.photoColors[to] = this.photoColors[from];
     this.locked[to] = this.locked[from];
     this.types[from] = SPECIES.EMPTY;
     this.data[from] = 0;
+    this.oilBurnLife[from] = 0;
     this.photoColors[from] = 0;
     this.locked[from] = 0;
     this.mark(from);
@@ -655,15 +801,18 @@ class SandSimulation {
   swapCells(from, to) {
     const nextType = this.types[to];
     const nextData = this.data[to];
+    const nextOilBurnLife = this.oilBurnLife[to];
     const nextPhotoColor = this.photoColors[to];
     const nextLocked = this.locked[to];
     const currentType = this.types[from];
     this.types[to] = currentType;
     this.data[to] = this.data[from];
+    this.oilBurnLife[to] = this.oilBurnLife[from];
     this.photoColors[to] = this.photoColors[from];
     this.locked[to] = this.locked[from];
     this.types[from] = nextType;
     this.data[from] = nextData;
+    this.oilBurnLife[from] = nextOilBurnLife;
     this.photoColors[from] = nextPhotoColor;
     this.locked[from] = nextLocked;
     this.mark(from);
@@ -856,6 +1005,45 @@ class SandSimulation {
   }
 
   updateOil(index, x, y) {
+    const burnLife = this.oilBurnLife[index];
+    if (burnLife > 0) {
+      if (burnLife <= 1) {
+        this.setCell(index, SPECIES.EMPTY, 0);
+        this.mark(index);
+        return;
+      }
+
+      this.oilBurnLife[index] = burnLife - 1;
+      this.data[index] = BURNING_OIL_TONE_BASE + ((this.frame + x * 3 + y * 5) & 31);
+
+      const burnDownStarted = burnLife < OIL_BURN_LIFE_BASE - 120;
+      const exposed =
+        y === 0 ||
+        (this.inBounds(x, y - 1) && (this.types[this.index(x, y - 1)] === SPECIES.EMPTY || this.types[this.index(x, y - 1)] === SPECIES.FIRE)) ||
+        (this.inBounds(x - 1, y) && this.types[this.index(x - 1, y)] === SPECIES.EMPTY) ||
+        (this.inBounds(x + 1, y) && this.types[this.index(x + 1, y)] === SPECIES.EMPTY);
+      if (
+        burnDownStarted &&
+        exposed &&
+        ((this.frame + x * 11 + y * 7) % 47) === 0
+      ) {
+        this.setCell(index, SPECIES.EMPTY, 0);
+        this.mark(index);
+        return;
+      }
+
+      if (y > 0) {
+        const aboveIndex = this.index(x, y - 1);
+        if (this.types[aboveIndex] === SPECIES.EMPTY && (this.frame & 3) === 0) {
+          this.setCell(aboveIndex, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, x, y - 1));
+        }
+      }
+
+      this.queueCellActivity(index, 3);
+      this.mark(index);
+      return;
+    }
+
     for (let i = 0; i < OIL_NEIGHBORS.length; i += 1) {
       const nx = x + OIL_NEIGHBORS[i][0];
       const ny = y + OIL_NEIGHBORS[i][1];
@@ -863,7 +1051,11 @@ class SandSimulation {
         continue;
       }
       if (this.types[this.index(nx, ny)] === SPECIES.FIRE) {
-        this.setCell(index, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, x, y));
+        if (this.shouldIgniteOil(x, y)) {
+          this.igniteOil(index, x, y);
+        } else {
+          this.queueCellActivity(index, 2);
+        }
         this.mark(index);
         return;
       }
@@ -938,8 +1130,10 @@ class SandSimulation {
         this.mark(index);
         return;
       }
-      if ((neighbor === SPECIES.WOOD || neighbor === SPECIES.OIL || neighbor === SPECIES.PHOTO) && ((this.frame + nx + ny) & 3) === 0) {
-        this.setCell(neighborIndex, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, nx, ny));
+      if ((neighbor === SPECIES.WOOD || neighbor === SPECIES.PHOTO) && ((this.frame + nx + ny) & 3) === 0) {
+        this.setCell(neighborIndex, SPECIES.FIRE, this.seedFireDataForFuel(neighbor, nx, ny));
+      } else if (neighbor === SPECIES.OIL && this.shouldIgniteOil(nx, ny)) {
+        this.igniteOil(neighborIndex, nx, ny);
       }
     }
 
@@ -1061,8 +1255,10 @@ class SandSimulation {
         return targetIndex;
       }
       // Ignite flammable materials on contact
-      if (target === SPECIES.WOOD || target === SPECIES.OIL || target === SPECIES.PHOTO) {
-        this.setCell(targetIndex, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, nx, ny));
+      if (target === SPECIES.WOOD || target === SPECIES.PHOTO) {
+        this.setCell(targetIndex, SPECIES.FIRE, this.seedFireDataForFuel(target, nx, ny));
+      } else if (target === SPECIES.OIL && this.shouldIgniteOil(nx, ny, OIL_SPARK_IGNITION_MASK)) {
+        this.igniteOil(targetIndex, nx, ny);
       }
     }
 
@@ -1133,8 +1329,10 @@ class SandSimulation {
       }
       const ni = this.index(nx, ny);
       const neighbor = this.types[ni];
-      if (neighbor === SPECIES.WOOD || neighbor === SPECIES.OIL || neighbor === SPECIES.PHOTO) {
-        this.setCell(ni, SPECIES.FIRE, this.seedDataFor(SPECIES.FIRE, nx, ny));
+      if (neighbor === SPECIES.WOOD || neighbor === SPECIES.PHOTO) {
+        this.setCell(ni, SPECIES.FIRE, this.seedFireDataForFuel(neighbor, nx, ny));
+      } else if (neighbor === SPECIES.OIL && this.shouldIgniteOil(nx, ny, OIL_SPARK_IGNITION_MASK)) {
+        this.igniteOil(ni, nx, ny);
       }
     }
 

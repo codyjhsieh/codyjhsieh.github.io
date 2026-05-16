@@ -300,24 +300,25 @@ function drawTiltIcon(ctx, button, active) {
   const cx = button.x + button.width / 2;
   const cy = button.y + button.height / 2;
   const scale = Math.min(button.width, button.height) / 34;
+  const ink = active ? "rgba(17, 24, 39, 0.92)" : "rgba(17, 24, 39, 0.68)";
 
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(-0.42);
-  ctx.strokeStyle = active ? "rgba(255, 244, 220, 0.96)" : "rgba(220, 228, 236, 0.78)";
-  ctx.fillStyle = active ? "rgba(255, 210, 122, 0.24)" : "rgba(255, 255, 255, 0.04)";
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = active ? "rgba(255, 255, 255, 0.42)" : "rgba(255, 255, 255, 0.2)";
   ctx.lineWidth = Math.max(1.4, 1.8 * scale);
   roundRect(ctx, -5.5 * scale, -10 * scale, 11 * scale, 20 * scale, 2.5 * scale);
   ctx.fill();
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(0, 7 * scale, 1.1 * scale, 0, Math.PI * 2);
-  ctx.fillStyle = active ? "rgba(255, 244, 220, 0.96)" : "rgba(220, 228, 236, 0.72)";
+  ctx.fillStyle = ink;
   ctx.fill();
   ctx.restore();
 
   ctx.save();
-  ctx.strokeStyle = active ? "rgba(255, 210, 122, 0.82)" : "rgba(220, 228, 236, 0.48)";
+  ctx.strokeStyle = active ? "rgba(17, 24, 39, 0.62)" : "rgba(17, 24, 39, 0.36)";
   ctx.lineWidth = Math.max(1.2, 1.5 * scale);
   ctx.beginPath();
   ctx.arc(cx, cy, 11 * scale, -0.25, 1.08);
@@ -330,11 +331,21 @@ function drawTiltIcon(ctx, button, active) {
   ctx.restore();
 }
 
-function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelRatio = 1, resumeHover = null, toast = null }) {
+function drawHud({
+  ctx,
+  viewWidth,
+  viewHeight,
+  state,
+  photos = [],
+  stats,
+  pixelRatio = 1,
+  backgroundCanvas = null,
+  resumeHover = null,
+  toast = null,
+}) {
   const layout = getHudLayoutForViewport(viewWidth, viewHeight, state, photos);
   const compact = layout.compact;
   const dock = layout.dock;
-  const selected = getLabelForElement(state.activeElement);
   const now = performance.now();
   const pulse = Math.sin(now * 0.003) * 0.5 + 0.5;
   const glowAngle = now * 0.001;
@@ -343,6 +354,8 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
   const gr = Math.round(255 - 80 * t);
   const gg = Math.round(180 + 40 * t);
   const gb = Math.round(100 + 155 * t);
+  const reduceTransparency = window.matchMedia?.("(prefers-reduced-transparency: reduce)")?.matches ?? false;
+  const increaseContrast = window.matchMedia?.("(prefers-contrast: more)")?.matches ?? false;
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -354,60 +367,106 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
   const dockR = compact ? 16 : 12;
   const panelR = compact ? 14 : 10;
   const btnR = compact ? 8 : 6;
+  const glassFill = reduceTransparency
+    ? "rgba(246, 248, 250, 0.94)"
+    : increaseContrast
+      ? "rgba(246, 248, 250, 0.9)"
+      : "rgba(246, 248, 250, 0.78)";
+  const glassStroke = increaseContrast ? "rgba(17, 24, 39, 0.28)" : "rgba(255, 255, 255, 0.62)";
+  const glassInnerStroke = increaseContrast ? "rgba(255, 255, 255, 0.78)" : "rgba(255, 255, 255, 0.48)";
+  const controlFill = reduceTransparency ? "rgba(255, 255, 255, 0.82)" : "rgba(255, 255, 255, 0.34)";
+  const controlSelectedFill = reduceTransparency ? "rgba(255, 255, 255, 0.96)" : "rgba(255, 255, 255, 0.64)";
+  const controlStroke = increaseContrast ? "rgba(17, 24, 39, 0.34)" : "rgba(255, 255, 255, 0.5)";
+  const controlSelectedStroke = increaseContrast ? "rgba(17, 24, 39, 0.54)" : "rgba(255, 255, 255, 0.78)";
+  const primaryText = "rgba(17, 24, 39, 0.9)";
+  const secondaryText = "rgba(17, 24, 39, 0.58)";
 
-  function drawGlowBox(x, y, w, h, r) {
-    // Background
+  function drawBackgroundSample(x, y, w, h, r) {
+    if (reduceTransparency || !backgroundCanvas?.width || !backgroundCanvas?.height) {
+      return;
+    }
+
+    const scale = 1.025;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+
     ctx.save();
-    ctx.shadowColor = "rgba(0, 0, 0, 0.38)";
-    ctx.shadowBlur = 28;
-    ctx.shadowOffsetY = 8;
     roundRect(ctx, x, y, w, h, r);
-    ctx.fillStyle = "rgba(10, 12, 18, 0.74)";
+    ctx.clip();
+    ctx.globalAlpha = increaseContrast ? 0.42 : 0.62;
+    ctx.filter = "blur(16px) saturate(145%) contrast(1.04)";
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.translate(-cx, -cy);
+    ctx.drawImage(backgroundCanvas, 0, 0, viewWidth, viewHeight);
+    ctx.restore();
+
+    ctx.save();
+    roundRect(ctx, x + 1.5, y + 1.5, w - 3, h - 3, Math.max(4, r - 1.5));
+    ctx.clip();
+    ctx.globalAlpha = increaseContrast ? 0.1 : 0.18;
+    ctx.filter = "blur(3px) saturate(165%) contrast(1.08)";
+    ctx.drawImage(backgroundCanvas, -1.5, -1.5, viewWidth + 3, viewHeight + 3);
+    ctx.restore();
+  }
+
+  function drawGlassSurface(x, y, w, h, r) {
+    drawBackgroundSample(x, y, w, h, r);
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.24)";
+    ctx.shadowBlur = 22;
+    ctx.shadowOffsetY = 10;
+    roundRect(ctx, x, y, w, h, r);
+    ctx.fillStyle = glassFill;
     ctx.fill();
     ctx.restore();
 
-    // Layered ambient glow — multiple passes radiating outward
-    const layers = [
-      { blur: 132 + t * 42, opacity: 0.5, width: compact ? 18 : 16, stroke: 0.1 },
-      { blur: 86 + t * 24, opacity: 0.58, width: compact ? 14 : 12, stroke: 0.14 },
-      { blur: 48 + t2 * 16, opacity: 0.62, width: compact ? 9 : 8, stroke: 0.18 },
-      { blur: 20 + t2 * 7, opacity: 0.56, width: compact ? 5 : 4, stroke: 0.26 },
-      { blur: 6, opacity: 0.35, width: 2, stroke: 0.42 },
-    ];
-    for (const layer of layers) {
-      ctx.save();
-      ctx.shadowColor = `rgba(${gr}, ${gg}, ${gb}, ${layer.opacity.toFixed(2)})`;
-      ctx.shadowBlur = layer.blur;
-      roundRect(ctx, x, y, w, h, r);
-      ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, ${layer.stroke.toFixed(2)})`;
-      ctx.lineWidth = layer.width;
-      ctx.stroke();
-      ctx.restore();
+    if (!increaseContrast) {
+      const layers = [
+        { blur: 132 + t * 42, opacity: 0.5, width: compact ? 18 : 16, stroke: 0.1 },
+        { blur: 86 + t * 24, opacity: 0.58, width: compact ? 14 : 12, stroke: 0.14 },
+        { blur: 48 + t2 * 16, opacity: 0.62, width: compact ? 9 : 8, stroke: 0.18 },
+        { blur: 20 + t2 * 7, opacity: 0.56, width: compact ? 5 : 4, stroke: 0.26 },
+        { blur: 6, opacity: 0.35, width: 2, stroke: 0.42 },
+      ];
+      for (const layer of layers) {
+        ctx.save();
+        ctx.shadowColor = `rgba(${gr}, ${gg}, ${gb}, ${layer.opacity.toFixed(2)})`;
+        ctx.shadowBlur = layer.blur;
+        roundRect(ctx, x, y, w, h, r);
+        ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, ${layer.stroke.toFixed(2)})`;
+        ctx.lineWidth = layer.width;
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     ctx.save();
-    roundRect(ctx, x + 1.5, y + 1.5, w - 3, h - 3, r);
-    ctx.strokeStyle = `rgba(255, 244, 220, ${(0.2 + pulse * 0.08).toFixed(2)})`;
-    ctx.lineWidth = compact ? 2.5 : 2;
+    roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, r);
+    ctx.strokeStyle = glassStroke;
+    ctx.lineWidth = 1;
     ctx.stroke();
-    roundRect(ctx, x + 4.5, y + 4.5, w - 9, h - 9, Math.max(4, r - 4));
-    ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, ${(0.24 + pulse * 0.1).toFixed(2)})`;
-    ctx.lineWidth = 1.25;
+    roundRect(ctx, x + 2.5, y + 2.5, w - 5, h - 5, Math.max(4, r - 3));
+    ctx.strokeStyle = increaseContrast
+      ? glassInnerStroke
+      : `rgba(${gr}, ${gg}, ${gb}, ${(0.16 + pulse * 0.06).toFixed(2)})`;
+    ctx.lineWidth = 0.75;
     ctx.stroke();
     ctx.restore();
   }
 
   // Panels
   for (const panel of layout.panels) {
-    drawGlowBox(panel.x, panel.y, panel.width, panel.height, panelR);
-    ctx.fillStyle = "rgba(200, 210, 225, 0.6)";
+    drawGlassSurface(panel.x, panel.y, panel.width, panel.height, panelR);
+    ctx.fillStyle = secondaryText;
     ctx.font = compact ? "10px monospace" : "9px monospace";
     ctx.fillText(panel.title, panel.x + panelR, panel.y + 14);
     ctx.font = compact ? "13px monospace" : "12px monospace";
   }
 
   // Dock
-  drawGlowBox(dock.x, dock.y, dock.width, dock.height, dockR);
+  drawGlassSurface(dock.x, dock.y, dock.width, dock.height, dockR);
 
   // Buttons
   ctx.textAlign = "center";
@@ -415,28 +474,18 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
     const isSelected = button.selected;
 
     roundRect(ctx, button.x, button.y, button.width, button.height, btnR);
-    ctx.fillStyle = isSelected
-      ? `rgba(255, 210, 122, ${(0.1 + pulse * 0.06).toFixed(3)})`
-      : "rgba(255, 255, 255, 0.03)";
+    ctx.fillStyle = isSelected ? controlSelectedFill : controlFill;
     ctx.fill();
 
     roundRect(ctx, button.x + 0.5, button.y + 0.5, button.width - 1, button.height - 1, btnR);
-    ctx.strokeStyle = isSelected
-      ? `rgba(255, 210, 122, ${(0.58 + pulse * 0.22).toFixed(2)})`
-      : "rgba(255, 255, 255, 0.12)";
-    ctx.lineWidth = isSelected ? 1.6 : 1;
+    ctx.strokeStyle = isSelected ? controlSelectedStroke : controlStroke;
+    ctx.lineWidth = isSelected && increaseContrast ? 1.5 : 1;
     ctx.stroke();
 
     ctx.save();
     roundRect(ctx, button.x, button.y, button.width, button.height, btnR);
     ctx.clip();
-    if (isSelected) {
-      ctx.shadowColor = "rgba(255, 210, 122, 0.6)";
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = "rgba(255, 244, 220, 0.95)";
-    } else {
-      ctx.fillStyle = "rgba(220, 228, 236, 0.75)";
-    }
+    ctx.fillStyle = isSelected ? primaryText : secondaryText;
     if (button.icon === "tilt") {
       drawTiltIcon(ctx, button, isSelected);
     } else {
@@ -448,8 +497,7 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
 
   // Status text
   ctx.font = "10px monospace";
-  ctx.fillStyle = "rgba(166, 182, 198, 0.6)";
-  ctx.fillText(selected, dock.x + 14, dock.y - 10);
+  ctx.fillStyle = secondaryText;
   if (!compact) {
     const fpsText = `${stats.fps}`;
     const fpsW = ctx.measureText(fpsText).width;
@@ -457,7 +505,7 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
   }
 
   if (state.activeElement === SPECIES.PHOTO) {
-    ctx.fillStyle = "rgba(166, 182, 198, 0.5)";
+    ctx.fillStyle = secondaryText;
     const photoLabel = truncateLabel(photos[state.photoIndex]?.label?.toUpperCase() ?? "LOADING", compact ? 22 : 28);
     ctx.fillText(photoLabel, dock.x + 14, dock.y - (compact ? 24 : 26));
   }
@@ -475,21 +523,21 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
     tipY = Math.max(4, tipY);
 
     ctx.save();
-    ctx.shadowColor = `rgba(${gr}, ${gg}, ${gb}, 0.4)`;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
     ctx.shadowBlur = 12;
     roundRect(ctx, tipX, tipY, tipW, tipH, tipR);
-    ctx.fillStyle = "rgba(10, 12, 18, 0.85)";
+    ctx.fillStyle = reduceTransparency ? "rgba(246, 248, 250, 0.96)" : "rgba(246, 248, 250, 0.72)";
     ctx.fill();
     ctx.restore();
 
     roundRect(ctx, tipX + 0.5, tipY + 0.5, tipW - 1, tipH - 1, tipR);
-    ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, 0.35)`;
+    ctx.strokeStyle = controlStroke;
     ctx.lineWidth = 1;
     ctx.stroke();
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(230, 238, 246, 0.9)";
+    ctx.fillStyle = primaryText;
     ctx.fillText(tipText, tipX + tipW / 2, tipY + tipH / 2);
     ctx.textAlign = "left";
   }
@@ -510,18 +558,18 @@ function drawHud({ ctx, viewWidth, viewHeight, state, photos = [], stats, pixelR
     ctx.shadowBlur = 18;
     ctx.shadowOffsetY = 6;
     roundRect(ctx, toastX, toastY, toastW, toastH, toastR);
-    ctx.fillStyle = "rgba(22, 14, 14, 0.88)";
+    ctx.fillStyle = reduceTransparency ? "rgba(246, 248, 250, 0.96)" : "rgba(246, 248, 250, 0.78)";
     ctx.fill();
     ctx.restore();
 
     roundRect(ctx, toastX + 0.5, toastY + 0.5, toastW - 1, toastH - 1, toastR);
-    ctx.strokeStyle = "rgba(255, 146, 126, 0.58)";
+    ctx.strokeStyle = increaseContrast ? "rgba(17, 24, 39, 0.46)" : "rgba(255, 255, 255, 0.68)";
     ctx.lineWidth = 1;
     ctx.stroke();
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255, 236, 230, 0.94)";
+    ctx.fillStyle = primaryText;
     ctx.fillText(toastLabel, toastX + toastW / 2, toastY + toastH / 2);
     ctx.textAlign = "left";
   }

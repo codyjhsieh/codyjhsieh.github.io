@@ -861,6 +861,7 @@ function updateHud(now, fps) {
       activeScene: state.activeScene,
     },
     pixelRatio: hudPixelRatio,
+    backgroundCanvas: canvas,
     resumeHover,
     toast,
   });

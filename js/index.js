@@ -34,11 +34,23 @@ const TILT_DEAD_ZONE = 0.055;
 const TILT_SENSOR_TIMEOUT_MS = 1800;
 const TOAST_DURATION_MS = 3200;
 
+const SPECIES_NAME = Object.fromEntries(
+  Object.entries(SPECIES).map(([k, v]) => [v, k.toLowerCase()]),
+);
+const track = (name, params) => {
+  try { window.gtag?.("event", name, params); } catch (_) { /* analytics off */ }
+};
+let firstPaintSent = false;
+
 const state = createAppState();
 state.tiltAvailable = Boolean(
   navigator.maxTouchPoints > 0 &&
   (window.DeviceMotionEvent || window.DeviceOrientationEvent),
 );
+track("device_layout", {
+  layout: window.matchMedia(MOBILE_MEDIA_QUERY).matches ? "mobile" : "desktop",
+  tilt_available: state.tiltAvailable,
+});
 const playfield = document.getElementById("playfield");
 const canvas = document.getElementById("sand-canvas");
 const hudCanvas = document.getElementById("hud-canvas");
@@ -458,6 +470,10 @@ function toWorldPoint(event) {
 }
 
 function paintStroke(from, to) {
+  if (!firstPaintSent) {
+    firstPaintSent = true;
+    track("first_paint", { element: SPECIES_NAME[state.activeElement] ?? state.activeElement });
+  }
   if (state.activeElement === SPECIES.PHOTO) {
     const active = photoStamps[state.photoIndex];
     applyPhotoStamp(simulation, active, to.x, to.y);
@@ -666,6 +682,7 @@ function isResumeHit(point) {
 }
 
 function openResume() {
+  track("open_resume");
   const opened = window.open("/assets/Resume.pdf", "_blank");
   if (!opened) {
     window.location.href = "/assets/Resume.pdf";
@@ -690,15 +707,18 @@ function handlePointerDown(event) {
         state.activeElement = species;
         state.hudSection = null;
         hudDirty = true;
+        track("select_element", { element: SPECIES_NAME[species] ?? species });
       },
       onHudSectionToggle: (section) => {
         state.hudSection = state.hudSection === section ? null : section;
         hudDirty = true;
+        track("toggle_section", { section, open: state.hudSection === section });
       },
       onBrushChange: (size) => {
         state.brushIndex = BRUSH_SIZES.indexOf(size);
         state.hudSection = null;
         hudDirty = true;
+        track("select_brush", { size });
       },
       onSceneChange: (sceneId) => {
         state.activeScene = sceneId;
@@ -707,10 +727,12 @@ function handlePointerDown(event) {
         metrics = simulation.sampleMetrics();
         state.hudSection = null;
         hudDirty = true;
+        track("select_scene", { scene: sceneId });
       },
       onPauseToggle: () => {
         state.paused = !state.paused;
         hudDirty = true;
+        track("toggle_pause", { paused: state.paused });
       },
       onTiltToggle: () => {
         if (state.tiltEnabled) {
@@ -719,17 +741,20 @@ function handlePointerDown(event) {
           enablePhoneTilt();
         }
         hudDirty = true;
+        track("toggle_tilt", { enabled: state.tiltEnabled });
       },
       onClear: () => {
         simulation.clear();
         metrics = simulation.sampleMetrics();
         hudDirty = true;
+        track("clear_canvas");
       },
       onReseed: () => {
         simulation.seed(state.activeScene, getSeedOptions());
         decorateSceneWithPhotos();
         metrics = simulation.sampleMetrics();
         hudDirty = true;
+        track("reseed_scene", { scene: state.activeScene });
       },
       onPhotoPrev: () => {
         if (!photoStamps.length) {
@@ -737,6 +762,7 @@ function handlePointerDown(event) {
         }
         state.photoIndex = (state.photoIndex - 1 + photoStamps.length) % photoStamps.length;
         hudDirty = true;
+        track("browse_photo", { direction: "prev", label: photoStamps[state.photoIndex]?.label });
       },
       onPhotoNext: () => {
         if (!photoStamps.length) {
@@ -744,6 +770,7 @@ function handlePointerDown(event) {
         }
         state.photoIndex = (state.photoIndex + 1) % photoStamps.length;
         hudDirty = true;
+        track("browse_photo", { direction: "next", label: photoStamps[state.photoIndex]?.label });
       },
     },
   });
@@ -812,10 +839,12 @@ canvas.addEventListener("pointerleave", () => {
   lastPoint = null;
 });
 tiltAllowButton?.addEventListener("click", () => {
+  track("tilt_permission", { granted: true });
   hideTiltPermissionPrompt();
   enablePhoneTilt({ fromPrompt: true });
 });
 tiltCancelButton?.addEventListener("click", () => {
+  track("tilt_permission", { granted: false });
   hideTiltPermissionPrompt();
   showToast("Tilt permission was not granted.");
 });

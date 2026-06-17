@@ -441,7 +441,7 @@ class SandSimulation {
 
     if (sceneId === "fountain") {
       const mobileLayout = this.height > this.width * 1.08;
-      const cx = this.width * (mobileLayout ? 0.5 : 0.42);
+      const cx = this.width * 0.5;
       const halfWidth = Math.max(28, Math.floor(this.width * (mobileLayout ? 0.34 : 0.29)));
       const left = Math.max(8, Math.floor(cx - halfWidth));
       const right = Math.min(this.width - 9, Math.floor(cx + halfWidth));
@@ -521,7 +521,7 @@ class SandSimulation {
 
     if (sceneId === "bonfire") {
       const mobileLayout = this.height > this.width * 1.08;
-      const cx = this.width * (mobileLayout ? 0.5 : 0.42);
+      const cx = this.width * 0.5;
       const hudClearance = mobileLayout ? Math.max(30, Math.floor(this.height * 0.16)) : 42;
       const pitY = Math.max(codyY + 58, floorY - hudClearance);
       const pitRadius = Math.max(17, Math.floor(this.width * (mobileLayout ? 0.15 : 0.13)));

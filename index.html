@@ -76,6 +76,95 @@
           transform: rotate(360deg);
         }
       }
+
+      #tutorial-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 12;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(18, 14, 28, 0.74);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 260ms ease;
+      }
+
+      #tutorial-overlay.is-visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .tutorial-frame {
+        background: #1a1224;
+        color: #f7e6c4;
+        font-family: "Press Start 2P", "Courier New", monospace;
+        padding: 26px 24px 22px;
+        width: min(380px, 100%);
+        text-align: center;
+        image-rendering: pixelated;
+        box-shadow:
+          0 0 0 4px #1a1224,
+          0 0 0 8px #f7e6c4,
+          0 0 0 12px #1a1224,
+          10px 10px 0 12px rgba(0, 0, 0, 0.45);
+      }
+
+      .tutorial-title {
+        margin: 0 0 18px;
+        font-size: 14px;
+        line-height: 1.4;
+        letter-spacing: 0.08em;
+        color: #ffd877;
+      }
+
+      .tutorial-line {
+        margin: 12px 0;
+        font-size: 10px;
+        line-height: 1.7;
+        letter-spacing: 0.06em;
+      }
+
+      .tutorial-line .tutorial-num {
+        color: #ffd877;
+        margin-right: 8px;
+      }
+
+      .tutorial-cta {
+        margin-top: 18px;
+        color: #ffd877;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+      }
+
+      #tutorial-dismiss {
+        margin-top: 22px;
+        background: #ffd877;
+        color: #1a1224;
+        font-family: inherit;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        padding: 12px 20px;
+        border: 0;
+        cursor: pointer;
+        box-shadow:
+          0 0 0 3px #1a1224,
+          0 0 0 6px #f7e6c4,
+          5px 5px 0 6px rgba(0, 0, 0, 0.4);
+        transition: transform 60ms ease;
+      }
+
+      #tutorial-dismiss:hover {
+        transform: translate(-1px, -1px);
+      }
+
+      #tutorial-dismiss:active {
+        transform: translate(2px, 2px);
+        box-shadow:
+          0 0 0 3px #1a1224,
+          0 0 0 6px #f7e6c4,
+          2px 2px 0 6px rgba(0, 0, 0, 0.4);
+      }
     </style>
     <script defer src="/app.mobile-aspect.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-XCYX5P4441"></script>
@@ -100,6 +189,15 @@
           <canvas id="hud-canvas"></canvas>
         </div>
       </main>
+      <div id="tutorial-overlay" role="dialog" aria-modal="true" aria-labelledby="tutorial-title" hidden>
+        <div class="tutorial-frame">
+          <h2 id="tutorial-title" class="tutorial-title">&#9733; WELCOME &#9733;</h2>
+          <p class="tutorial-line"><span class="tutorial-num">1.</span>TAP A MATERIAL</p>
+          <p class="tutorial-line"><span class="tutorial-num">2.</span>DRAG ON THE CANVAS</p>
+          <p class="tutorial-cta">START WITH SAND</p>
+          <button id="tutorial-dismiss" type="button">LET&#39;S GO</button>
+        </div>
+      </div>
       <div id="tilt-permission" class="tilt-permission is-hidden" aria-hidden="true">
         <div class="tilt-permission-panel" role="dialog" aria-modal="true" aria-labelledby="tilt-permission-title">
           <p id="tilt-permission-title">Enable tilt</p>
@@ -108,5 +206,45 @@
         </div>
       </div>
     </div>
+    <script>
+      (function () {
+        var KEY = "cody-sand-tutorial-seen";
+        try { if (localStorage.getItem(KEY)) return; } catch (_) { return; }
+        var overlay = document.getElementById("tutorial-overlay");
+        var btn = document.getElementById("tutorial-dismiss");
+        var loading = document.getElementById("loading-overlay");
+        if (!overlay || !btn || !loading) return;
+
+        var fontLink = document.createElement("link");
+        fontLink.rel = "stylesheet";
+        fontLink.href = "https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap";
+        document.head.appendChild(fontLink);
+
+        function reveal() {
+          overlay.hidden = false;
+          requestAnimationFrame(function () { overlay.classList.add("is-visible"); });
+          try { window.gtag && window.gtag("event", "tutorial_shown"); } catch (_) {}
+        }
+        function dismiss() {
+          overlay.classList.remove("is-visible");
+          setTimeout(function () { overlay.hidden = true; }, 280);
+          try { localStorage.setItem(KEY, "1"); } catch (_) {}
+          try { window.gtag && window.gtag("event", "tutorial_dismissed"); } catch (_) {}
+        }
+        btn.addEventListener("click", dismiss);
+
+        if (loading.classList.contains("is-hidden")) {
+          reveal();
+        } else {
+          var obs = new MutationObserver(function () {
+            if (loading.classList.contains("is-hidden")) {
+              obs.disconnect();
+              setTimeout(reveal, 220);
+            }
+          });
+          obs.observe(loading, { attributes: true, attributeFilter: ["class"] });
+        }
+      })();
+    </script>
   </body>
 </html>

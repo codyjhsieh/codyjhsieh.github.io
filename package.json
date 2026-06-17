@@ -4,7 +4,7 @@
   "private": true,
   "description": "A from-scratch JavaScript falling sand sandbox with a 2D canvas renderer.",
   "scripts": {
-    "build": "webpack --mode=production",
+    "build": "webpack --mode=production && cp dist/app.mobile-aspect.js app.mobile-aspect.js",
     "dev": "webpack serve --host 0.0.0.0 --mode=development",
     "start": "npm run dev",
     "test": "node tests/fireworks.e2e.mjs && node tests/black_hole.e2e.mjs && node tests/birds_black_hole.e2e.mjs && npm run build"

@@ -132,7 +132,7 @@
         z-index: 12;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 400ms cubic-bezier(0.22, 1, 0.36, 1);
+        transition: opacity 800ms cubic-bezier(0.22, 1, 0.36, 1);
         --cut-x: 50%;
         --cut-y: 42%;
         --cut-r: 36vmin;
@@ -143,16 +143,16 @@
 
       #tutorial-overlay[data-step="materials"] {
         --cut-x: 50%;
-        --cut-y: 82%;
-        --cut-r: 22vmin;
-        --cut-fade: 50px;
+        --cut-y: 88%;
+        --cut-r: 52vmin;
+        --cut-fade: 60px;
       }
 
       @media (min-width: 721px) {
         #tutorial-overlay[data-step="materials"] {
           --cut-x: 82%;
-          --cut-y: 86%;
-          --cut-r: 18vmin;
+          --cut-y: 88%;
+          --cut-r: 26vmin;
         }
       }
 
@@ -327,41 +327,58 @@
           },
         };
 
+        var alreadyPainted = false;
+        var alreadyFireworked = false;
+        var dismissed = false;
+        var revealed = false;
+        var REVEAL_DELAY_MS = 2000;
+        var DISMISS_DELAY_MS = 820;
+
         function setStep(name) {
+          if (dismissed) return;
           overlay.setAttribute("data-step", name);
           title.textContent = STEPS[name].title;
           subtitle.textContent = STEPS[name].subtitle;
           try { window.gtag && window.gtag("event", "tutorial_step", { step: name }); } catch (_) {}
         }
         function reveal() {
+          if (revealed || dismissed) return;
+          revealed = true;
+          if (alreadyFireworked) { dismissed = true; return; }
           overlay.hidden = false;
-          setStep("paint");
+          setStep(alreadyPainted ? "materials" : "paint");
           requestAnimationFrame(function () { overlay.classList.add("is-visible"); });
           try { window.gtag && window.gtag("event", "tutorial_shown"); } catch (_) {}
         }
         function dismiss(reason) {
+          if (dismissed) return;
+          dismissed = true;
           overlay.classList.remove("is-visible");
-          setTimeout(function () { overlay.hidden = true; }, 400);
+          setTimeout(function () { overlay.hidden = true; }, DISMISS_DELAY_MS);
           try { window.gtag && window.gtag("event", "tutorial_completed", { reason: reason || "done" }); } catch (_) {}
         }
 
         window.addEventListener("cody:painted", function () {
-          if (overlay.getAttribute("data-step") === "paint") setStep("materials");
+          alreadyPainted = true;
+          if (revealed && overlay.getAttribute("data-step") === "paint") setStep("materials");
         });
         window.addEventListener("cody:element-change", function (e) {
-          var step = overlay.getAttribute("data-step");
-          if (step === "materials" && e && e.detail && e.detail.species === "firework") {
+          if (!e || !e.detail || e.detail.species !== "firework") return;
+          alreadyFireworked = true;
+          if (revealed && overlay.getAttribute("data-step") === "materials") {
             dismiss("firework-selected");
           }
         });
 
+        function scheduleReveal() { setTimeout(reveal, REVEAL_DELAY_MS); }
+
         if (loading.classList.contains("is-hidden")) {
-          reveal();
+          scheduleReveal();
         } else {
           var obs = new MutationObserver(function () {
             if (loading.classList.contains("is-hidden")) {
               obs.disconnect();
-              setTimeout(reveal, 220);
+              scheduleReveal();
             }
           });
           obs.observe(loading, { attributes: true, attributeFilter: ["class"] });

@@ -264,7 +264,6 @@
     <script>
       (function () {
         var KEY = "cody-sand-tutorial-seen";
-        try { if (localStorage.getItem(KEY)) return; } catch (_) { return; }
         var overlay = document.getElementById("tutorial-overlay");
         var btn = document.getElementById("tutorial-dismiss");
         var loading = document.getElementById("loading-overlay");
@@ -278,7 +277,6 @@
         function dismiss() {
           overlay.classList.remove("is-visible");
           setTimeout(function () { overlay.hidden = true; }, 280);
-          try { localStorage.setItem(KEY, "1"); } catch (_) {}
           try { window.gtag && window.gtag("event", "tutorial_dismissed"); } catch (_) {}
         }
         btn.addEventListener("click", dismiss);

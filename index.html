@@ -122,8 +122,8 @@
       }
 
       @property --cut-x { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
-      @property --cut-y { syntax: '<percentage>'; inherits: true; initial-value: 42%; }
-      @property --cut-r { syntax: '<length>'; inherits: true; initial-value: 36vmin; }
+      @property --cut-y { syntax: '<percentage>'; inherits: true; initial-value: 62%; }
+      @property --cut-r { syntax: '<length>'; inherits: true; initial-value: 30vmin; }
       @property --cut-fade { syntax: '<length>'; inherits: true; initial-value: 70px; }
 
       #tutorial-overlay {
@@ -134,8 +134,8 @@
         pointer-events: none;
         transition: opacity 800ms cubic-bezier(0.22, 1, 0.36, 1);
         --cut-x: 50%;
-        --cut-y: 42%;
-        --cut-r: 36vmin;
+        --cut-y: 62%;
+        --cut-r: 30vmin;
         --cut-fade: 70px;
       }
 
@@ -143,16 +143,16 @@
 
       #tutorial-overlay[data-step="materials"] {
         --cut-x: 50%;
-        --cut-y: 88%;
-        --cut-r: 52vmin;
-        --cut-fade: 60px;
+        --cut-y: 78%;
+        --cut-r: 56vmin;
+        --cut-fade: 70px;
       }
 
       @media (min-width: 721px) {
         #tutorial-overlay[data-step="materials"] {
           --cut-x: 82%;
-          --cut-y: 88%;
-          --cut-r: 26vmin;
+          --cut-y: 78%;
+          --cut-r: 34vmin;
         }
       }
 
@@ -323,7 +323,7 @@
           },
           materials: {
             title: "Now try Fireworks",
-            subtitle: "Tap MORE in the dock, then pick Fireworks.",
+            subtitle: "Tap SAND in the dock, then pick Fireworks.",
           },
         };
 

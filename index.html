@@ -77,17 +77,61 @@
         }
       }
 
+      .liquid-glass {
+        position: relative;
+        background:
+          linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.24) 0%,
+            rgba(255, 255, 255, 0.10) 48%,
+            rgba(255, 255, 255, 0.18) 100%
+          );
+        -webkit-backdrop-filter: blur(28px) saturate(180%) url(#liquid-glass-refraction);
+        backdrop-filter: blur(28px) saturate(180%) url(#liquid-glass-refraction);
+        border-radius: 28px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.55),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+          0 22px 56px rgba(0, 0, 0, 0.24),
+          0 0 56px rgba(255, 220, 150, 0.28),
+          0 0 96px rgba(214, 210, 255, 0.36),
+          0 0 148px rgba(164, 219, 255, 0.28);
+        isolation: isolate;
+      }
+
+      .liquid-glass::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(
+          ellipse 78% 42% at 50% 0%,
+          rgba(255, 255, 255, 0.46),
+          transparent 62%
+        );
+        opacity: 0.7;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      @supports not (backdrop-filter: blur(1px)) {
+        .liquid-glass {
+          background: rgba(248, 248, 250, 0.92);
+        }
+      }
+
       #tutorial-overlay {
         position: fixed;
         inset: 0;
         z-index: 12;
         display: grid;
         place-items: center;
-        padding: 20px;
-        background: rgba(18, 14, 28, 0.74);
+        padding: 24px;
+        background: rgba(15, 16, 22, 0.18);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 260ms ease;
+        transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       #tutorial-overlay.is-visible {
@@ -95,75 +139,78 @@
         pointer-events: auto;
       }
 
-      .tutorial-frame {
-        background: #1a1224;
-        color: #f7e6c4;
-        font-family: "Press Start 2P", "Courier New", monospace;
-        padding: 26px 24px 22px;
-        width: min(380px, 100%);
+      .tutorial-card {
+        width: min(360px, 100%);
+        padding: 30px 28px 26px;
         text-align: center;
-        image-rendering: pixelated;
-        box-shadow:
-          0 0 0 4px #1a1224,
-          0 0 0 8px #f7e6c4,
-          0 0 0 12px #1a1224,
-          10px 10px 0 12px rgba(0, 0, 0, 0.45);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+        color: rgba(20, 22, 30, 0.92);
+        transform: scale(0.96) translateY(10px);
+        transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
       }
 
-      .tutorial-title {
-        margin: 0 0 18px;
-        font-size: 14px;
-        line-height: 1.4;
-        letter-spacing: 0.08em;
-        color: #ffd877;
+      #tutorial-overlay.is-visible .tutorial-card {
+        transform: scale(1) translateY(0);
       }
 
-      .tutorial-line {
-        margin: 12px 0;
-        font-size: 10px;
-        line-height: 1.7;
-        letter-spacing: 0.06em;
+      .tutorial-card h2 {
+        margin: 0 0 12px;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: rgba(20, 22, 30, 0.96);
       }
 
-      .tutorial-line .tutorial-num {
-        color: #ffd877;
-        margin-right: 8px;
+      .tutorial-card p {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: rgba(20, 22, 30, 0.66);
       }
 
-      .tutorial-cta {
-        margin-top: 18px;
-        color: #ffd877;
-        font-size: 10px;
-        letter-spacing: 0.08em;
+      .tutorial-card .tutorial-cta {
+        margin-top: 6px;
+        font-weight: 500;
+        color: rgba(20, 22, 30, 0.92);
       }
 
       #tutorial-dismiss {
-        margin-top: 22px;
-        background: #ffd877;
-        color: #1a1224;
-        font-family: inherit;
-        font-size: 10px;
-        letter-spacing: 0.1em;
-        padding: 12px 20px;
-        border: 0;
+        margin-top: 24px;
+        padding: 11px 30px;
+        font: 600 14px/1 -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "Segoe UI", system-ui, sans-serif;
+        letter-spacing: -0.01em;
+        color: rgba(20, 22, 30, 0.96);
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.58) 0%,
+          rgba(255, 255, 255, 0.32) 100%
+        );
+        border: 1px solid rgba(255, 255, 255, 0.55);
+        -webkit-backdrop-filter: blur(20px) saturate(170%);
+        backdrop-filter: blur(20px) saturate(170%);
+        border-radius: 999px;
         cursor: pointer;
         box-shadow:
-          0 0 0 3px #1a1224,
-          0 0 0 6px #f7e6c4,
-          5px 5px 0 6px rgba(0, 0, 0, 0.4);
-        transition: transform 60ms ease;
+          inset 0 1px 0 rgba(255, 255, 255, 0.65),
+          0 6px 18px rgba(0, 0, 0, 0.10);
+        transition: transform 140ms ease, box-shadow 140ms ease;
       }
 
       #tutorial-dismiss:hover {
-        transform: translate(-1px, -1px);
+        transform: translateY(-1px);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.75),
+          0 10px 22px rgba(0, 0, 0, 0.14);
       }
 
       #tutorial-dismiss:active {
-        transform: translate(2px, 2px);
+        transform: translateY(0);
         box-shadow:
-          0 0 0 3px #1a1224,
-          0 0 0 6px #f7e6c4,
-          2px 2px 0 6px rgba(0, 0, 0, 0.4);
+          inset 0 1px 0 rgba(255, 255, 255, 0.55),
+          0 3px 10px rgba(0, 0, 0, 0.10);
       }
     </style>
     <script defer src="/app.mobile-aspect.js"></script>
@@ -176,6 +223,15 @@
     </script>
   </head>
   <body>
+    <svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute; pointer-events: none;">
+      <defs>
+        <filter id="liquid-glass-refraction" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="4" result="noise" />
+          <feGaussianBlur in="noise" stdDeviation="2" result="softNoise" />
+          <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
     <div id="loading-overlay" role="status" aria-live="polite">
       <div class="loader-mark">
         <div class="loader-orbit" aria-hidden="true"></div>
@@ -190,12 +246,11 @@
         </div>
       </main>
       <div id="tutorial-overlay" role="dialog" aria-modal="true" aria-labelledby="tutorial-title" hidden>
-        <div class="tutorial-frame">
-          <h2 id="tutorial-title" class="tutorial-title">&#9733; WELCOME &#9733;</h2>
-          <p class="tutorial-line"><span class="tutorial-num">1.</span>TAP A MATERIAL</p>
-          <p class="tutorial-line"><span class="tutorial-num">2.</span>DRAG ON THE CANVAS</p>
-          <p class="tutorial-cta">START WITH SAND</p>
-          <button id="tutorial-dismiss" type="button">LET&#39;S GO</button>
+        <div class="tutorial-card liquid-glass">
+          <h2 id="tutorial-title">Welcome</h2>
+          <p>Tap a material, drag to paint.</p>
+          <p class="tutorial-cta">Start with sand.</p>
+          <button id="tutorial-dismiss" type="button">Begin</button>
         </div>
       </div>
       <div id="tilt-permission" class="tilt-permission is-hidden" aria-hidden="true">
@@ -214,11 +269,6 @@
         var btn = document.getElementById("tutorial-dismiss");
         var loading = document.getElementById("loading-overlay");
         if (!overlay || !btn || !loading) return;
-
-        var fontLink = document.createElement("link");
-        fontLink.rel = "stylesheet";
-        fontLink.href = "https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap";
-        document.head.appendChild(fontLink);
 
         function reveal() {
           overlay.hidden = false;

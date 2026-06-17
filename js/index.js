@@ -472,7 +472,9 @@ function toWorldPoint(event) {
 function paintStroke(from, to) {
   if (!firstPaintSent) {
     firstPaintSent = true;
-    track("first_paint", { element: SPECIES_NAME[state.activeElement] ?? state.activeElement });
+    const name = SPECIES_NAME[state.activeElement] ?? state.activeElement;
+    track("first_paint", { element: name });
+    window.dispatchEvent(new CustomEvent("cody:painted", { detail: { species: name } }));
   }
   if (state.activeElement === SPECIES.PHOTO) {
     const active = photoStamps[state.photoIndex];
@@ -707,7 +709,9 @@ function handlePointerDown(event) {
         state.activeElement = species;
         state.hudSection = null;
         hudDirty = true;
-        track("select_element", { element: SPECIES_NAME[species] ?? species });
+        const name = SPECIES_NAME[species] ?? species;
+        track("select_element", { element: name });
+        window.dispatchEvent(new CustomEvent("cody:element-change", { detail: { species: name } }));
       },
       onHudSectionToggle: (section) => {
         state.hudSection = state.hudSection === section ? null : section;

@@ -685,9 +685,9 @@ function isResumeHit(point) {
 
 function openResume() {
   track("open_resume");
-  const opened = window.open("/assets/Resume.pdf", "_blank");
+  const opened = window.open("/assets/Resume_Cody_Hsieh_2026.pdf", "_blank");
   if (!opened) {
-    window.location.href = "/assets/Resume.pdf";
+    window.location.href = "/assets/Resume_Cody_Hsieh_2026.pdf";
   }
 }
 

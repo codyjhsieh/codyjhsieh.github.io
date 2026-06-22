@@ -125,6 +125,7 @@
       @property --cut-y { syntax: '<percentage>'; inherits: true; initial-value: 62%; }
       @property --cut-r { syntax: '<length>'; inherits: true; initial-value: 30vmin; }
       @property --cut-fade { syntax: '<length>'; inherits: true; initial-value: 70px; }
+      @property --blur-amount { syntax: '<length>'; inherits: true; initial-value: 0px; }
 
       #tutorial-overlay {
         position: fixed;
@@ -137,9 +138,12 @@
         --cut-y: 62%;
         --cut-r: 30vmin;
         --cut-fade: 70px;
+        --blur-amount: 0px;
       }
 
-      #tutorial-overlay.is-visible { opacity: 1; }
+      #tutorial-overlay.is-visible { opacity: 1; --blur-amount: 10px; }
+      #tutorial-overlay[data-panel-open="true"] { --blur-amount: 0px; }
+      #tutorial-overlay[data-panel-open="true"] .tutorial-glass { opacity: 0; }
 
       #tutorial-overlay[data-step="materials"] {
         --cut-x: 50%;
@@ -165,8 +169,8 @@
           rgba(255, 255, 255, 0.04) 50%,
           rgba(255, 255, 255, 0.08) 100%
         );
-        -webkit-backdrop-filter: blur(10px) saturate(150%);
-        backdrop-filter: blur(10px) saturate(150%);
+        -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(150%);
+        backdrop-filter: blur(var(--blur-amount)) saturate(150%);
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.24),
           inset 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -182,11 +186,14 @@
           transparent calc(var(--cut-r) - var(--cut-fade)),
           black var(--cut-r)
         );
+        will-change: backdrop-filter, opacity;
         transition:
           --cut-x 620ms cubic-bezier(0.22, 1, 0.36, 1),
           --cut-y 620ms cubic-bezier(0.22, 1, 0.36, 1),
           --cut-r 620ms cubic-bezier(0.22, 1, 0.36, 1),
-          --cut-fade 620ms cubic-bezier(0.22, 1, 0.36, 1);
+          --cut-fade 620ms cubic-bezier(0.22, 1, 0.36, 1),
+          --blur-amount 620ms cubic-bezier(0.22, 1, 0.36, 1),
+          opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .tutorial-hint {
@@ -231,8 +238,11 @@
 
       .tutorial-caption {
         position: absolute;
-        left: 50%;
-        top: max(28px, env(safe-area-inset-top, 0px));
+        left: var(--cut-x);
+        top: max(
+          calc(env(safe-area-inset-top, 0px) + 16px),
+          calc(var(--cut-y) - var(--cut-r) - 110px)
+        );
         transform: translateX(-50%);
         padding: 14px 22px;
         width: min(380px, calc(100vw - 32px));
@@ -242,6 +252,9 @@
         color: rgba(20, 22, 30, 0.92);
         border-radius: 22px;
         pointer-events: none;
+        transition:
+          top 620ms cubic-bezier(0.22, 1, 0.36, 1),
+          left 620ms cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .tutorial-caption h2 {
@@ -292,7 +305,7 @@
           <canvas id="hud-canvas"></canvas>
         </div>
       </main>
-      <div id="tutorial-overlay" role="status" aria-live="polite" hidden>
+      <div id="tutorial-overlay" role="status" aria-live="polite" aria-hidden="true">
         <div class="tutorial-glass" aria-hidden="true"></div>
         <div class="tutorial-hint" aria-hidden="true"></div>
         <div class="tutorial-caption liquid-glass">
@@ -345,8 +358,8 @@
           if (revealed || dismissed) return;
           revealed = true;
           if (alreadyFireworked) { dismissed = true; return; }
-          overlay.hidden = false;
           setStep(alreadyPainted ? "materials" : "paint");
+          overlay.setAttribute("aria-hidden", "false");
           requestAnimationFrame(function () { overlay.classList.add("is-visible"); });
           try { window.gtag && window.gtag("event", "tutorial_shown"); } catch (_) {}
         }
@@ -354,7 +367,7 @@
           if (dismissed) return;
           dismissed = true;
           overlay.classList.remove("is-visible");
-          setTimeout(function () { overlay.hidden = true; }, DISMISS_DELAY_MS);
+          setTimeout(function () { overlay.setAttribute("aria-hidden", "true"); }, DISMISS_DELAY_MS);
           try { window.gtag && window.gtag("event", "tutorial_completed", { reason: reason || "done" }); } catch (_) {}
         }
 
@@ -367,6 +380,14 @@
           alreadyFireworked = true;
           if (revealed && overlay.getAttribute("data-step") === "materials") {
             dismiss("firework-selected");
+          }
+        });
+        window.addEventListener("cody:hud-section", function (e) {
+          if (!e || !e.detail) return;
+          if (e.detail.open) {
+            overlay.setAttribute("data-panel-open", "true");
+          } else {
+            overlay.removeAttribute("data-panel-open");
           }
         });
 

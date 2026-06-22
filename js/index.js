@@ -716,7 +716,9 @@ function handlePointerDown(event) {
       onHudSectionToggle: (section) => {
         state.hudSection = state.hudSection === section ? null : section;
         hudDirty = true;
-        track("toggle_section", { section, open: state.hudSection === section });
+        const open = state.hudSection === section;
+        track("toggle_section", { section, open });
+        window.dispatchEvent(new CustomEvent("cody:hud-section", { detail: { section, open } }));
       },
       onBrushChange: (size) => {
         state.brushIndex = BRUSH_SIZES.indexOf(size);

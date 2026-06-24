@@ -931,18 +931,7 @@ function getTickBudget(fps) {
   return fps < 56 ? MIN_TICKS_PER_FRAME : MAX_TICKS_PER_FRAME;
 }
 
-let renderFrozen = false;
-
-window.addEventListener("cody:freeze-render", (e) => {
-  renderFrozen = !!(e && e.detail && e.detail.frozen);
-});
-
 function frame(now) {
-  if (renderFrozen) {
-    updateHud(now, 60);
-    requestAnimationFrame(frame);
-    return;
-  }
   const fps = sampleFps(now);
   const tickBudget = getTickBudget(fps);
   if (tickBudget > 0) {

@@ -10,6 +10,9 @@
     <title>Cody Hsieh Portfolio</title>
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
     <link rel="preload" href="/app.mobile-aspect.js" as="script" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" />
     <style>
       #loading-overlay {
         position: fixed;
@@ -77,54 +80,10 @@
         }
       }
 
-      .liquid-glass {
-        position: relative;
-        background:
-          linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.24) 0%,
-            rgba(255, 255, 255, 0.10) 48%,
-            rgba(255, 255, 255, 0.18) 100%
-          );
-        -webkit-backdrop-filter: blur(28px) saturate(180%);
-        backdrop-filter: blur(28px) saturate(180%);
-        border-radius: 28px;
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.55),
-          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
-          inset 0 -1px 0 rgba(255, 255, 255, 0.08),
-          0 22px 56px rgba(0, 0, 0, 0.24),
-          0 0 56px rgba(255, 220, 150, 0.28),
-          0 0 96px rgba(214, 210, 255, 0.36),
-          0 0 148px rgba(164, 219, 255, 0.28);
-        isolation: isolate;
-      }
-
-      .liquid-glass::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        background: radial-gradient(
-          ellipse 78% 42% at 50% 0%,
-          rgba(255, 255, 255, 0.46),
-          transparent 62%
-        );
-        opacity: 0.7;
-        mix-blend-mode: screen;
-        pointer-events: none;
-      }
-
-      @supports not (backdrop-filter: blur(1px)) {
-        .liquid-glass {
-          background: rgba(248, 248, 250, 0.92);
-        }
-      }
-
       @property --cut-x { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
       @property --cut-y { syntax: '<percentage>'; inherits: true; initial-value: 62%; }
       @property --cut-r { syntax: '<length>'; inherits: true; initial-value: 30vmin; }
-      @property --cut-fade { syntax: '<length>'; inherits: true; initial-value: 70px; }
+      @property --cut-fade { syntax: '<length>'; inherits: true; initial-value: 0px; }
 
       #tutorial-overlay {
         position: fixed;
@@ -133,21 +92,20 @@
         opacity: 0;
         pointer-events: none;
         will-change: opacity;
-        transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
+        transition: opacity 700ms steps(6, end);
         --cut-x: 50%;
         --cut-y: 62%;
         --cut-r: 30vmin;
-        --cut-fade: 70px;
+        --cut-fade: 0px;
       }
 
       #tutorial-overlay.is-visible { opacity: 1; }
-      #tutorial-overlay[data-panel-open="true"] .tutorial-glass { opacity: 0; }
+      #tutorial-overlay[data-panel-open="true"] .tutorial-pixel { opacity: 0; }
 
       #tutorial-overlay[data-step="materials"] {
         --cut-x: 50%;
         --cut-y: 78%;
         --cut-r: 56vmin;
-        --cut-fade: 70px;
       }
 
       @media (min-width: 721px) {
@@ -158,20 +116,16 @@
         }
       }
 
-      .tutorial-glass {
+      .tutorial-pixel {
         position: absolute;
         inset: 0;
-        background: linear-gradient(
-          135deg,
-          rgba(255, 255, 255, 0.10) 0%,
-          rgba(255, 255, 255, 0.04) 50%,
-          rgba(255, 255, 255, 0.08) 100%
-        );
-        -webkit-backdrop-filter: blur(10px) saturate(150%);
-        backdrop-filter: blur(10px) saturate(150%);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.24),
-          inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        width: 100%;
+        height: 100%;
+        display: block;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-crisp-edges;
+        image-rendering: crisp-edges;
+        image-rendering: pixelated;
         -webkit-mask-image: radial-gradient(
           circle at var(--cut-x) var(--cut-y),
           transparent 0,
@@ -184,55 +138,37 @@
           transparent calc(var(--cut-r) - var(--cut-fade)),
           black var(--cut-r)
         );
-        isolation: isolate;
         will-change: opacity;
-        transform: translateZ(0);
         transition:
-          --cut-x 620ms cubic-bezier(0.22, 1, 0.36, 1),
-          --cut-y 620ms cubic-bezier(0.22, 1, 0.36, 1),
-          --cut-r 620ms cubic-bezier(0.22, 1, 0.36, 1),
-          --cut-fade 620ms cubic-bezier(0.22, 1, 0.36, 1),
-          opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
+          --cut-x 480ms steps(8, end),
+          --cut-y 480ms steps(8, end),
+          --cut-r 480ms steps(8, end),
+          opacity 360ms steps(6, end);
       }
 
       .tutorial-hint {
         position: absolute;
         left: var(--cut-x);
         top: var(--cut-y);
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         transform: translate(-50%, -50%);
-        border-radius: 50%;
-        background: rgba(20, 22, 30, 0.92);
+        border-radius: 0;
+        background: #1a1d24;
         box-shadow:
-          0 0 0 4px rgba(255, 255, 255, 0.92),
-          0 0 0 5px rgba(20, 22, 30, 0.32),
-          0 4px 12px rgba(0, 0, 0, 0.25);
-        animation: tutorial-pulse 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+          0 0 0 4px #fdf6e3,
+          0 0 0 8px #1a1d24,
+          6px 6px 0 0 #1a1d24;
+        animation: tutorial-pulse 560ms steps(1, end) infinite;
         pointer-events: none;
         transition:
-          left 620ms cubic-bezier(0.22, 1, 0.36, 1),
-          top 620ms cubic-bezier(0.22, 1, 0.36, 1);
-      }
-
-      .tutorial-hint::after {
-        content: "";
-        position: absolute;
-        inset: -3px;
-        border-radius: 50%;
-        border: 2px solid rgba(20, 22, 30, 0.7);
-        animation: tutorial-ring 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+          left 480ms steps(8, end),
+          top 480ms steps(8, end);
       }
 
       @keyframes tutorial-pulse {
-        0%, 100% { transform: translate(-50%, -50%) scale(1); }
-        50% { transform: translate(-50%, -50%) scale(1.18); }
-      }
-
-      @keyframes tutorial-ring {
-        0%   { transform: scale(1); opacity: 0.9; }
-        80%  { transform: scale(3.4); opacity: 0; }
-        100% { transform: scale(3.4); opacity: 0; }
+        0%, 49%   { transform: translate(-50%, -50%) scale(1); }
+        50%, 100% { transform: translate(-50%, -50%) scale(1.4); }
       }
 
       .tutorial-caption {
@@ -240,36 +176,45 @@
         left: var(--cut-x);
         top: max(
           calc(env(safe-area-inset-top, 0px) + 16px),
-          calc(var(--cut-y) - var(--cut-r) - 110px)
+          calc(var(--cut-y) - var(--cut-r) - 132px)
         );
         transform: translateX(-50%);
-        padding: 14px 22px;
-        width: min(380px, calc(100vw - 32px));
+        padding: 16px 18px 14px;
+        width: min(340px, calc(100vw - 32px));
         text-align: center;
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-          "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
-        color: rgba(20, 22, 30, 0.92);
-        border-radius: 22px;
+        background: #fdf6e3;
+        border: 4px solid #1a1d24;
+        border-radius: 0;
+        box-shadow:
+          inset 0 0 0 2px #fdf6e3,
+          inset 0 0 0 6px #1a1d24,
+          8px 8px 0 0 #1a1d24;
+        font-family: "Press Start 2P", "Courier New", monospace;
+        color: #1a1d24;
         pointer-events: none;
         transition:
-          top 620ms cubic-bezier(0.22, 1, 0.36, 1),
-          left 620ms cubic-bezier(0.22, 1, 0.36, 1);
+          top 480ms steps(8, end),
+          left 480ms steps(8, end);
       }
 
       .tutorial-caption h2 {
         margin: 0;
-        font-size: 17px;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        color: rgba(20, 22, 30, 0.96);
+        font-size: 11px;
+        font-weight: 400;
+        line-height: 1.5;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        color: #1a1d24;
       }
 
       .tutorial-caption p {
-        margin: 4px 0 0;
-        font-size: 13px;
+        margin: 12px 0 0;
+        font-size: 7px;
         font-weight: 400;
-        line-height: 1.45;
-        color: rgba(20, 22, 30, 0.65);
+        line-height: 1.7;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        color: #1a1d24;
       }
     </style>
     <script defer src="/app.mobile-aspect.js"></script>
@@ -305,9 +250,9 @@
         </div>
       </main>
       <div id="tutorial-overlay" role="status" aria-live="polite" aria-hidden="true">
-        <div class="tutorial-glass" aria-hidden="true"></div>
+        <canvas id="tutorial-pixel" class="tutorial-pixel" aria-hidden="true"></canvas>
         <div class="tutorial-hint" aria-hidden="true"></div>
-        <div class="tutorial-caption liquid-glass">
+        <div class="tutorial-caption">
           <h2 id="tutorial-title">Tap to make sand</h2>
           <p id="tutorial-subtitle">Drag anywhere on the canvas.</p>
         </div>
@@ -345,10 +290,20 @@
         var revealed = false;
         var REVEAL_DELAY_MS = 2000;
         var DISMISS_DELAY_MS = 820;
-        var FREEZE_DURATION_MS = 1050;
+        var PIXEL_BLOCK = 18;
 
-        function setRenderFrozen(frozen) {
-          window.dispatchEvent(new CustomEvent("cody:freeze-render", { detail: { frozen: !!frozen } }));
+        function paintPixelated() {
+          var src = document.getElementById("sand-canvas");
+          var dst = document.getElementById("tutorial-pixel");
+          if (!src || !dst || !src.width || !src.height) return;
+          var dw = Math.max(2, Math.ceil(window.innerWidth / PIXEL_BLOCK));
+          var dh = Math.max(2, Math.ceil(window.innerHeight / PIXEL_BLOCK));
+          dst.width = dw;
+          dst.height = dh;
+          var ctx = dst.getContext("2d");
+          if (!ctx) return;
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(src, 0, 0, dw, dh);
         }
 
         function setStep(name) {
@@ -363,10 +318,9 @@
           revealed = true;
           if (alreadyFireworked) { dismissed = true; return; }
           setStep(alreadyPainted ? "materials" : "paint");
+          paintPixelated();
           overlay.setAttribute("aria-hidden", "false");
-          setRenderFrozen(true);
           requestAnimationFrame(function () { overlay.classList.add("is-visible"); });
-          setTimeout(function () { setRenderFrozen(false); }, FREEZE_DURATION_MS);
           try { window.gtag && window.gtag("event", "tutorial_shown"); } catch (_) {}
         }
         function dismiss(reason) {
@@ -379,8 +333,10 @@
 
         window.addEventListener("cody:painted", function () {
           alreadyPainted = true;
-          setRenderFrozen(false);
-          if (revealed && overlay.getAttribute("data-step") === "paint") setStep("materials");
+          if (revealed && overlay.getAttribute("data-step") === "paint") {
+            setStep("materials");
+            setTimeout(paintPixelated, 80);
+          }
         });
         window.addEventListener("cody:element-change", function (e) {
           if (!e || !e.detail || e.detail.species !== "firework") return;

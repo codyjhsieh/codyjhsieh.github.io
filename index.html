@@ -91,8 +91,7 @@
         z-index: 12;
         opacity: 0;
         pointer-events: none;
-        will-change: opacity;
-        transition: opacity 700ms steps(6, end);
+        transition: none;
         --cut-x: 50%;
         --cut-y: 62%;
         --cut-r: 30vmin;
@@ -138,12 +137,7 @@
           transparent calc(var(--cut-r) - var(--cut-fade)),
           black var(--cut-r)
         );
-        will-change: opacity;
-        transition:
-          --cut-x 480ms steps(8, end),
-          --cut-y 480ms steps(8, end),
-          --cut-r 480ms steps(8, end),
-          opacity 360ms steps(6, end);
+        transition: none;
       }
 
       .tutorial-hint {
@@ -161,9 +155,7 @@
           6px 6px 0 0 #1a1d24;
         animation: tutorial-pulse 560ms steps(1, end) infinite;
         pointer-events: none;
-        transition:
-          left 480ms steps(8, end),
-          top 480ms steps(8, end);
+        transition: none;
       }
 
       @keyframes tutorial-pulse {
@@ -192,9 +184,7 @@
         font-family: "Press Start 2P", "Courier New", monospace;
         color: #1a1d24;
         pointer-events: none;
-        transition:
-          top 480ms steps(8, end),
-          left 480ms steps(8, end);
+        transition: none;
       }
 
       .tutorial-caption h2 {

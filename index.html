@@ -230,6 +230,15 @@
         var loading = document.getElementById("loading-overlay");
         if (!overlay || !title || !subtitle || !loading) return;
 
+        var STORAGE_KEY = "cody-sand-tutorial-seen";
+        function hasBeenSeen() {
+          try { return localStorage.getItem(STORAGE_KEY) === "1"; } catch (_) { return false; }
+        }
+        function markSeen() {
+          try { localStorage.setItem(STORAGE_KEY, "1"); } catch (_) {}
+        }
+        if (hasBeenSeen()) return;
+
         var STEPS = {
           paint: {
             title: "Tap to make sand",
@@ -258,10 +267,11 @@
         function reveal() {
           if (revealed || dismissed) return;
           revealed = true;
-          if (alreadyFireworked) { dismissed = true; return; }
+          if (alreadyFireworked) { dismissed = true; markSeen(); return; }
           setStep(alreadyPainted ? "materials" : "paint");
           overlay.setAttribute("aria-hidden", "false");
           requestAnimationFrame(function () { overlay.classList.add("is-visible"); });
+          markSeen();
           try { window.gtag && window.gtag("event", "tutorial_shown"); } catch (_) {}
         }
         function dismiss(reason) {

@@ -766,7 +766,12 @@ function handlePointerDown(event) {
         state.hudSection = null;
         hudDirty = true;
         track("open_url", { url });
-        window.open(url, "_blank", "noopener,noreferrer");
+        const opened = window.open(url, "_blank");
+        if (opened) {
+          opened.opener = null;
+        } else {
+          window.location.href = url;
+        }
       },
       onPhotoPrev: () => {
         if (!photoStamps.length) {

@@ -51,7 +51,7 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
   const compact = viewWidth < 760;
   const photoToolActive = state.activeElement === SPECIES.PHOTO;
   const sideMargin = compact ? 10 : 18;
-  const dockWidth = compact ? Math.max(280, Math.min(viewWidth - sideMargin * 2, 342)) : 286;
+  const dockWidth = compact ? Math.max(280, Math.min(viewWidth - sideMargin * 2, 342)) : 314;
   const dockHeight = compact ? (photoToolActive ? 142 : 98) : (photoToolActive ? 68 : 40);
   const panelWidth = compact ? Math.max(312, Math.min(viewWidth - sideMargin * 2, 360)) : 372;
   const dockX = compact ? Math.round((viewWidth - dockWidth) * 0.5) : viewWidth - dockWidth - 18;
@@ -74,8 +74,8 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     const rowWidth = dock.width - inset * 2;
     const topLeftWidth = Math.floor((rowWidth - buttonGap) * 0.68);
     const topRightWidth = rowWidth - buttonGap - topLeftWidth;
-    const tiltButtonWidth = buttonHeight;
-    const bottomWidth = Math.floor((rowWidth - tiltButtonWidth - buttonGap * 2) / 2);
+    const iconButtonWidth = buttonHeight;
+    const bottomWidth = Math.floor((rowWidth - iconButtonWidth * 2 - buttonGap * 3) / 2);
     const bottomY = dock.y + 54;
     const photoY = dock.y + 98;
 
@@ -92,9 +92,20 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     addButton(dock.x + inset, bottomY, bottomWidth, buttonHeight, "WORLD", { type: "toggle-section", value: "world" }, state.hudSection === "world");
     addButton(dock.x + inset + bottomWidth + buttonGap, bottomY, bottomWidth, buttonHeight, "MORE", { type: "toggle-section", value: "more" }, state.hudSection === "more");
     addButton(
-      dock.x + dock.width - inset - tiltButtonWidth,
+      dock.x + dock.width - inset - iconButtonWidth * 2 - buttonGap,
       bottomY,
-      tiltButtonWidth,
+      iconButtonWidth,
+      buttonHeight,
+      "",
+      { type: "open-url", value: "https://github.com/codyjhsieh" },
+      false,
+      false,
+      "github",
+    );
+    addButton(
+      dock.x + dock.width - inset - iconButtonWidth,
+      bottomY,
+      iconButtonWidth,
       buttonHeight,
       "",
       { type: "tilt-toggle" },
@@ -111,7 +122,8 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
       addButton(dock.x + dock.width - inset - sideButtonWidth, photoY, sideButtonWidth, buttonHeight, "NEXT", { type: "photo-next" });
     }
   } else {
-    const available = dock.width - inset * 2 - buttonGap * 3;
+    const iconButtonWidth = buttonHeight;
+    const available = dock.width - inset * 2 - buttonGap * 4 - iconButtonWidth;
     const toolButtonWidth = Math.floor(available * 0.34);
     const pauseButtonWidth = Math.floor(available * 0.28);
     const sectionButtonWidth = Math.floor((available - toolButtonWidth - pauseButtonWidth) / 2);
@@ -130,7 +142,18 @@ function getHudLayoutForViewport(viewWidth, viewHeight, state, photos = []) {
     cx += sectionButtonWidth + buttonGap;
     addButton(cx, dock.y + 11, sectionButtonWidth, buttonHeight, "WORLD", { type: "toggle-section", value: "world" }, state.hudSection === "world");
     cx += sectionButtonWidth + buttonGap;
-    addButton(cx, dock.y + 11, dock.x + dock.width - inset - cx, buttonHeight, state.paused ? "RESUME" : "PAUSE", { type: "pause" }, state.paused);
+    addButton(cx, dock.y + 11, dock.x + dock.width - inset - iconButtonWidth - buttonGap - cx, buttonHeight, state.paused ? "RESUME" : "PAUSE", { type: "pause" }, state.paused);
+    addButton(
+      dock.x + dock.width - inset - iconButtonWidth,
+      dock.y + 11,
+      iconButtonWidth,
+      buttonHeight,
+      "",
+      { type: "open-url", value: "https://github.com/codyjhsieh" },
+      false,
+      false,
+      "github",
+    );
     if (photoToolActive) {
       const photoY = dock.y + 39;
       const sideButtonWidth = 56;
@@ -279,6 +302,7 @@ function handleHudPointer({ point, viewWidth, viewHeight, state, photos = [], ca
       case "photo-prev": callbacks.onPhotoPrev(); return true;
       case "photo-next": callbacks.onPhotoNext(); return true;
       case "tilt-toggle": callbacks.onTiltToggle(); return true;
+      case "open-url": callbacks.onOpenUrl(button.action.value); return true;
       default: return false;
     }
   }
@@ -294,6 +318,25 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+const GITHUB_ICON_PATH = new Path2D(
+  "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
+);
+
+function drawGithubIcon(ctx, button, active) {
+  const ink = active ? "rgba(17, 24, 39, 0.92)" : "rgba(17, 24, 39, 0.78)";
+  const size = Math.min(button.width, button.height) * 0.78;
+  const scale = size / 24;
+  const offsetX = button.x + (button.width - size) / 2;
+  const offsetY = button.y + (button.height - size) / 2;
+
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = ink;
+  ctx.fill(GITHUB_ICON_PATH);
+  ctx.restore();
 }
 
 function drawTiltIcon(ctx, button, active) {
@@ -488,6 +531,8 @@ function drawHud({
     ctx.fillStyle = isSelected ? primaryText : secondaryText;
     if (button.icon === "tilt") {
       drawTiltIcon(ctx, button, isSelected);
+    } else if (button.icon === "github") {
+      drawGithubIcon(ctx, button, isSelected);
     } else {
       ctx.fillText(button.label, button.x + button.width / 2, button.y + button.height / 2);
     }

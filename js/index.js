@@ -762,6 +762,12 @@ function handlePointerDown(event) {
         hudDirty = true;
         track("reseed_scene", { scene: state.activeScene });
       },
+      onOpenUrl: (url) => {
+        state.hudSection = null;
+        hudDirty = true;
+        track("open_url", { url });
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
       onPhotoPrev: () => {
         if (!photoStamps.length) {
           return;
